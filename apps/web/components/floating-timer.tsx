@@ -128,22 +128,24 @@ export function FloatingTimer() {
 
         <div className="mb-4">
           <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="outline"
-                role="combobox"
-                aria-expanded={isOpen}
-                className="w-full justify-between truncate"
-                disabled={isRunning}
-              >
-                {selectedTicket ? (
-                  <span className="truncate block overflow-hidden">{selectedTicket.name}</span>
-                ) : (
-                  "Seleccionar ticket..."
-                )}
-                <ChevronUpIcon className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-              </Button>
-            </DropdownMenuTrigger>
+            <DropdownMenuTrigger
+              render={
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={isOpen}
+                  className="w-full justify-between truncate"
+                  disabled={isRunning}
+                >
+                  {selectedTicket ? (
+                    <span className="truncate block overflow-hidden">{selectedTicket.name}</span>
+                  ) : (
+                    "Seleccionar ticket..."
+                  )}
+                  <ChevronUpIcon className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              }
+            />
             <DropdownMenuContent className="w-64 max-h-[300px]" side="top">
               {loadingTickets ? (
                 <div className="p-2 text-sm text-center text-muted-foreground">Cargando...</div>
@@ -171,7 +173,7 @@ export function FloatingTimer() {
           {!isRunning ? (
             <Button
               size="icon"
-              variant="default"
+              variant="primary"
               onClick={handlePlay}
               disabled={!selectedTicket}
               title="Iniciar timer"
