@@ -28,10 +28,11 @@ describe("MetricsController", () => {
   });
 
   describe("getMetrics", () => {
-    it("should return the metrics payload from the service", async () => {
+    it("should return the formatted metrics dashboard", async () => {
       const mockMetrics = {
-        totalUsers: 100,
-        newUsersLast7Days: 15,
+        totalUsers: 15,
+        newUsersLast7Days: 3,
+        usersPerDay: [],
       };
 
       jest.spyOn(service, "getDashboardMetrics").mockResolvedValue(mockMetrics);
