@@ -4,6 +4,10 @@ import { ConfigModule } from "@nestjs/config";
 import { ThrottlerGuard, ThrottlerModule } from "@nestjs/throttler";
 import { PrismaModule } from "./prisma/prisma.module";
 import { AuthModule } from "./modules/auth/auth.module";
+import { UsersModule } from "./modules/users/users.module";
+import { CloudflareModule } from "./modules/cloudflare/cloudflare.module";
+import { MetricsModule } from "./modules/metrics/metrics.module";
+import { PlaneModule } from "./modules/plane/plane.module";
 import { HealthController } from "./health.controller";
 
 @Module({
@@ -17,6 +21,10 @@ import { HealthController } from "./health.controller";
     }),
     PrismaModule,
     AuthModule,
+    UsersModule,
+    CloudflareModule,
+    MetricsModule,
+    PlaneModule,
   ],
   controllers: [HealthController],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],

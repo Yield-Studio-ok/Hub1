@@ -11,7 +11,7 @@ import { PrismaService } from "../../prisma/prisma.service";
 import { FirebaseService } from "./firebase.service";
 import type { AuthUser } from "./auth.types";
 import { LoginDto } from "./dto/login.dto";
-
+import { RegisterDto } from "./dto/register.dto";
 const DEMO_USERS = [
   {
     email: "admin@admin.com",
@@ -40,6 +40,47 @@ export class AuthService implements OnModuleInit {
   async onModuleInit() {
     if (this.firebase.isEnabled()) return;
     await this.ensureDemoUsers();
+  }
+
+  async register(dto: RegisterDto) {
+    if (this.firebase.isEnabled()) {
+      throw new BadRequestException(
+        "Password registration is disabled while Firebase Auth is configured. Sign up with Firebase.",
+      );
+    }
+
+    const existingUser = await this.prisma.user.findUnique({
+      where: { email: dto.email },
+    });
+
+    if (existingUser) {
+      throw new BadRequestException("User with this email already exists");
+    }
+
+    const password = await bcrypt.hash(dto.password, 10);
+    const user = await this.prisma.user.create({
+      data: {
+        email: dto.email,
+        password,
+        name: dto.name || null,
+        role: "user",
+      },
+    });
+
+    const authUser: AuthUser = {
+      uid: user.id,
+      email: user.email,
+      role: user.role,
+    };
+
+    return {
+      accessToken: this.jwt.sign({
+        sub: authUser.uid,
+        email: authUser.email,
+        role: authUser.role,
+      }),
+      user: authUser,
+    };
   }
 
   async login(dto: LoginDto) {

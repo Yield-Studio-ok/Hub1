@@ -71,6 +71,23 @@ services:
     networks:
       - app-network
 
+  scraper:
+    build:
+      context: .
+      dockerfile: ./apps/scraper/Dockerfile.dev
+    restart: unless-stopped
+    environment:
+      NODE_ENV: development
+      PORT: "3002"
+    ports:
+      - "3002:3002"
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/apps/scraper/node_modules
+    networks:
+      - app-network
+
 volumes:
   postgres_data:
     driver: local

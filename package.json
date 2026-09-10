@@ -12,6 +12,7 @@
     "lint": "oxlint .",
     "fmt": "oxfmt",
     "fmt:check": "oxfmt --check",
+    "test": "pnpm --filter @boilerplate/api test && pnpm --filter @boilerplate/web test",
     "prepare": "lefthook install"
   },
   "devDependencies": {

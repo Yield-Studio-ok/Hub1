@@ -1,0 +1,27 @@
+FROM node:22-alpine
+
+# Instalar dependencias para Puppeteer en Alpine
+RUN apk add --no-cache \
+      chromium \
+      nss \
+      freetype \
+      harfbuzz \
+      ca-certificates \
+      ttf-freefont
+
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
+    PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
+
+WORKDIR /app
+
+RUN corepack enable
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
+COPY apps/scraper/package.json ./apps/scraper/
+RUN pnpm install --frozen-lockfile
+
+COPY . .
+
+WORKDIR /app/apps/scraper
+
+EXPOSE 3002
+CMD ["pnpm", "run", "start:dev"]

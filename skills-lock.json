@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "skills": {
+    "014-agile-user-story": {
+      "source": "jabrena/plinth",
+      "sourceType": "github",
+      "skillPath": "skills/014-agile-user-story/SKILL.md",
+      "computedHash": "df08cb1d24d538d16c5a7f9ccb1cc78bd07825ec7675fc80cbf523fa6dbcab3a"
+    },
+    "planning-with-files-es": {
+      "source": "othmanadi/planning-with-files",
+      "sourceType": "github",
+      "skillPath": "skills/i18n/planning-with-files-es/SKILL.md",
+      "computedHash": "17cc5216d32603e1ba6168e2913785806cafa2a26dc07be38765cf1a5936f0fa"
+    },
+    "to-tickets": {
+      "source": "mattpocock/skills",
+      "sourceType": "github",
+      "skillPath": "skills/engineering/to-tickets/SKILL.md",
+      "computedHash": "bf5e6ebcb4f1272de0c188d5b3901f265a03d1fa9935a21a7a56938e21e2e761"
+    }
+  }
+}
