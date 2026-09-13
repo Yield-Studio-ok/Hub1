@@ -1,70 +1,29 @@
-import { PrismaClient, Role, ProjectType } from "@prisma/client";
+import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log("Start seeding...");
+  console.log("Start seeding mocks in Neon DB...");
 
-  // 1. Create a Founder user if it doesn't exist
-  const founderEmail = "admin@yieldstudio.com";
-  const founder = await prisma.user.upsert({
-    where: { email: founderEmail },
-    update: {},
-    create: {
-      email: founderEmail,
-      name: "Yield Studio Admin",
-      password: "hashed_password_here", // In a real scenario, this would be properly hashed
-      role: Role.FOUNDER,
-    },
-  });
-
-  console.log(`Created founder user with id: ${founder.id}`);
-
-  // 2. Create a Default Project for Yield Studio
-  const project = await prisma.project.create({
-    data: {
-      name: "Yield Studio Internal",
-      type: ProjectType.WEB_APP,
-      ownerId: founder.id,
-    },
-  });
-
-  console.log(`Created default project with id: ${project.id}`);
-
-  // 3. Seed Resources (Assets & Snippets)
-  const resources = [
-    {
-      name: "Color Primario",
-      content: "#6366F1",
-      type: "code_snippet",
-      projectId: project.id,
-    },
-    {
-      name: "Font Import",
-      content:
-        '@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");',
-      type: "code_snippet",
-      projectId: project.id,
-    },
-    {
-      name: "Logo Principal",
-      content: "https://via.placeholder.com/200x60?text=YieldStudio",
-      type: "logo",
-      projectId: project.id,
-    },
-    {
-      name: "Documentación Next.js",
-      content: "https://nextjs.org/docs",
-      type: "link",
-      projectId: project.id,
-    },
+  const testUsers = [
+    { email: "admin@yieldstudio.com", name: "Admin Yield", role: "admin" },
+    { email: "user@yieldstudio.com", name: "User Yield", role: "user" },
+    { email: "mock1@yieldstudio.com", name: "Mock Uno", role: "user" },
+    { email: "mock2@yieldstudio.com", name: "Mock Dos", role: "user" }
   ];
 
-  for (const resource of resources) {
-    const createdResource = await prisma.resource.create({
-      data: resource,
+  for (const u of testUsers) {
+    const user = await prisma.user.upsert({
+      where: { email: u.email },
+      update: {},
+      create: {
+        email: u.email,
+        name: u.name,
+        password: "hashed_password_mock", 
+        role: u.role,
+      },
     });
-    console.log(`Created resource: ${createdResource.name}`);
+    console.log(`Upserted user: ${user.email} (ID: ${user.id})`);
   }
 
   console.log("Seeding finished.");
