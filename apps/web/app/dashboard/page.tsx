@@ -1,90 +1,95 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useAuth } from "@/lib/auth-context";
-import { apiFetch } from "@/lib/api";
-import { GlassChart } from "@/components/ui/glass-chart";
+import { GitCommit, Rocket, Activity, Clock } from "lucide-react";
 
-interface DailySignup {
-  date: string;
-  count: number;
-}
-
-interface DashboardMetrics {
-  totalUsers: number;
-  newUsersLast7Days: number;
-  usersPerDay: DailySignup[];
-}
+// Placeholder data — will be replaced by real GitHub API data (Ticket 2.3)
+const MOCK_COMMITS = [
+  {
+    id: "1",
+    message: "feat: add project selector",
+    repo: "Hub",
+    author: "Lean",
+    date: "hace 2 horas",
+  },
+  {
+    id: "2",
+    message: "fix: sidebar active state",
+    repo: "Hub",
+    author: "Lean",
+    date: "hace 5 horas",
+  },
+  {
+    id: "3",
+    message: "chore: update dependencies",
+    repo: "Turnero",
+    author: "Lean",
+    date: "hace 1 día",
+  },
+];
 
 export default function DashboardPage() {
-  const { user, logout } = useAuth();
-  const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
-
-  useEffect(() => {
-    async function loadMetrics() {
-      try {
-        const token = await user?.getIdToken();
-        const data = await apiFetch<DashboardMetrics>("/metrics", { token });
-        setMetrics(data);
-      } catch (err) {
-        console.error("Failed to load metrics", err);
-        setError(true);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    if (user) {
-      loadMetrics();
-    }
-  }, [user]);
-
   return (
-    <div className="min-h-screen bg-slate-900 p-8 text-white/90">
-      <div className="max-w-4xl mx-auto">
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold text-white">Dashboard</h1>
-          <button
-            onClick={logout}
-            className="px-4 py-2 bg-red-500/80 backdrop-blur-sm text-white rounded-lg hover:bg-red-500 transition border border-red-400/50"
-          >
-            Logout
-          </button>
+    <div className="min-h-screen p-6">
+      <h1 className="text-2xl font-bold text-white mb-6">Dashboard</h1>
+
+      {/* Stats Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        <div className="p-5 bg-white/5 backdrop-blur-md rounded-xl border border-white/10">
+          <div className="flex items-center gap-3 mb-2">
+            <GitCommit className="h-5 w-5 text-blue-400" />
+            <h3 className="text-sm font-medium text-white/70 uppercase tracking-wider">
+              Commits (7d)
+            </h3>
+          </div>
+          <p className="text-3xl font-bold text-white">—</p>
+          <p className="text-xs text-white/40 mt-1">Conectar API de GitHub</p>
         </div>
 
-        <p className="mb-8 text-slate-300">
-          Bienvenido, <span className="font-semibold text-white">{user?.email}</span>
+        <div className="p-5 bg-white/5 backdrop-blur-md rounded-xl border border-white/10">
+          <div className="flex items-center gap-3 mb-2">
+            <Rocket className="h-5 w-5 text-green-400" />
+            <h3 className="text-sm font-medium text-white/70 uppercase tracking-wider">
+              Deploys (7d)
+            </h3>
+          </div>
+          <p className="text-3xl font-bold text-white">—</p>
+          <p className="text-xs text-white/40 mt-1">Conectar CI/CD</p>
+        </div>
+
+        <div className="p-5 bg-white/5 backdrop-blur-md rounded-xl border border-white/10">
+          <div className="flex items-center gap-3 mb-2">
+            <Activity className="h-5 w-5 text-purple-400" />
+            <h3 className="text-sm font-medium text-white/70 uppercase tracking-wider">
+              Proyectos Activos
+            </h3>
+          </div>
+          <p className="text-3xl font-bold text-white">3</p>
+          <p className="text-xs text-white/40 mt-1">Landing, E-commerce, Web App</p>
+        </div>
+      </div>
+
+      {/* Recent Commits */}
+      <div className="bg-white/5 backdrop-blur-md rounded-xl border border-white/10 p-5">
+        <div className="flex items-center gap-2 mb-4">
+          <Clock className="h-5 w-5 text-white/60" />
+          <h2 className="text-lg font-semibold text-white">Actividad Reciente</h2>
+        </div>
+        <div className="space-y-3">
+          {MOCK_COMMITS.map((commit) => (
+            <div key={commit.id} className="flex items-center gap-3 p-3 bg-white/5 rounded-lg">
+              <GitCommit className="h-4 w-4 text-blue-400 shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm text-white truncate">{commit.message}</p>
+                <p className="text-xs text-white/40">
+                  {commit.repo} · {commit.author} · {commit.date}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+        <p className="text-center text-xs text-white/30 mt-4">
+          Los datos reales se mostrarán al conectar la API de GitHub (Ticket 2.3)
         </p>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          <div className="p-6 bg-white/10 backdrop-blur-md rounded-xl border border-white/20 shadow-lg">
-            <h3 className="text-sm font-medium text-white/70 uppercase tracking-wider mb-2">
-              Total Users
-            </h3>
-            <p className="text-4xl font-bold text-white">{loading ? "-" : metrics?.totalUsers}</p>
-          </div>
-          <div className="p-6 bg-white/10 backdrop-blur-md rounded-xl border border-white/20 shadow-lg">
-            <h3 className="text-sm font-medium text-white/70 uppercase tracking-wider mb-2">
-              New Users (Last 7 Days)
-            </h3>
-            <p className="text-4xl font-bold text-white">
-              {loading ? "-" : metrics?.newUsersLast7Days}
-            </p>
-          </div>
-        </div>
-
-        <div className="mt-8">
-          <GlassChart
-            title="Nuevos Usuarios por Día"
-            data={metrics?.usersPerDay || []}
-            xKey="date"
-            yKey="count"
-            loading={loading}
-            error={error}
-          />
-        </div>
       </div>
     </div>
   );

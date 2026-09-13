@@ -10,13 +10,15 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
-import { Home, Settings, Users, Briefcase } from "lucide-react";
+import { Home, Settings, Users, Briefcase, Search, BookOpen } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const items = [
-  { title: "Inicio", url: "/", icon: Home },
+  { title: "Inicio", url: "/dashboard", icon: Home },
   { title: "Proyectos", url: "/projects", icon: Briefcase },
+  { title: "Scraper", url: "/scraper", icon: Search },
+  { title: "Recursos", url: "/resources", icon: BookOpen },
   { title: "Equipo", url: "/team", icon: Users },
   { title: "Configuración", url: "/settings", icon: Settings },
 ];
