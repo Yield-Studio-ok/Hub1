@@ -1,7 +1,25 @@
 "use client";
 
 import { useState } from "react";
-import { Search, MapPin, Loader2, Globe, Building } from "lucide-react";
+import {
+  Search,
+  MapPin,
+  Loader2,
+  Globe,
+  Building,
+  Crosshair,
+  Map as MapIcon,
+  SlidersHorizontal,
+} from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 
 interface Lead {
   id: string;
@@ -14,15 +32,17 @@ interface Lead {
 
 export default function ScraperPage() {
   const [query, setQuery] = useState("");
-  const [location, setLocation] = useState("");
+  const [locationName, setLocationName] = useState("");
+  const [radius, setRadius] = useState(5);
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<Lead[]>([]);
   const [searched, setSearched] = useState(false);
   const [onlySolidLeads, setOnlySolidLeads] = useState(false);
+  const [isMapOpen, setIsMapOpen] = useState(false);
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!query.trim() || !location.trim()) return;
+    if (!query.trim() || !locationName.trim()) return;
 
     setLoading(true);
     setSearched(true);
@@ -33,161 +53,269 @@ export default function ScraperPage() {
         {
           id: "1",
           name: "Pizzería Don Carlos",
-          address: "Av. Corrientes 1234, CABA",
+          address: locationName
+            ? `Av. Principal 123, ${locationName}`
+            : "Av. Corrientes 1234, CABA",
           website: null,
           mapsUrl: "https://maps.google.com/?q=Pizzeria+Don+Carlos",
           rating: 4.5,
         },
         {
           id: "2",
-          name: "Café Martínez Centro",
-          address: "Florida 400, CABA",
-          website: "https://cafemartinez.com",
-          mapsUrl: "https://maps.google.com/?q=Cafe+Martinez",
-          rating: 4.2,
+          name: "La Farola de Cabildo",
+          address: "Av. Cabildo 2500, CABA",
+          website: "https://lafarola.com",
+          mapsUrl: "https://maps.google.com/?q=La+Farola",
+          rating: 4.0,
         },
         {
           id: "3",
-          name: "Ferretería La Tuerca",
-          address: "San Martín 555, CABA",
+          name: "Empanadas El Noble",
+          address: "Santa Fe 3200, CABA",
           website: null,
-          mapsUrl: "https://maps.google.com/?q=Ferreteria+La+Tuerca",
+          mapsUrl: "https://maps.google.com/?q=El+Noble",
           rating: 3.8,
         },
       ]);
       setLoading(false);
-    }, 1500);
+    }, 2500);
   };
 
-  const filteredResults = onlySolidLeads ? results.filter((r) => !r.website) : results;
-
   return (
-    <div className="min-h-screen p-6">
-      <div className="flex items-center gap-3 mb-6">
-        <Search className="h-7 w-7 text-white/80" />
-        <h1 className="text-2xl font-bold text-white">Buscador de Leads (Maps)</h1>
+    <div className="min-h-screen p-6 md:p-10 max-w-6xl mx-auto font-sans">
+      <div className="mb-8 flex items-center gap-3">
+        <div className="p-3 bg-primary/10 rounded-xl">
+          <Search className="h-7 w-7 text-primary" />
+        </div>
+        <div>
+          <h1 className="text-3xl font-bold text-foreground tracking-tight">Buscador de Leads</h1>
+          <p className="text-muted-foreground mt-1">
+            Extrae prospectos directamente desde Google Maps.
+          </p>
+        </div>
       </div>
 
-      {/* Search Form */}
       <form
         onSubmit={handleSearch}
-        className="bg-white/5 backdrop-blur-md rounded-xl border border-white/10 p-6 mb-8 max-w-3xl"
+        className="bg-card rounded-2xl border border-border shadow-sm p-6 mb-8"
       >
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
           <div>
-            <label className="block text-sm text-white/70 mb-1">Rubro o Negocio</label>
+            <label className="block text-sm font-medium text-foreground mb-2">
+              ¿Qué estás buscando?
+            </label>
             <div className="relative">
-              <Building className="absolute left-3 top-2.5 h-5 w-5 text-white/40" />
+              <Building className="absolute left-3 top-3 h-5 w-5 text-muted-foreground" />
               <input
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Ej: Pizzerías, Ferreterías..."
-                className="w-full pl-10 pr-3 py-2 bg-black/20 border border-white/10 rounded-lg text-white placeholder-white/30 focus:outline-none focus:border-blue-500"
+                placeholder="Ej: Pizzerías, Inmobiliarias, Gimnasios..."
+                className="w-full pl-10 pr-4 py-2.5 bg-background border border-border rounded-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
               />
             </div>
           </div>
           <div>
-            <label className="block text-sm text-white/70 mb-1">Ubicación</label>
-            <div className="relative">
-              <MapPin className="absolute left-3 top-2.5 h-5 w-5 text-white/40" />
-              <input
-                type="text"
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
-                placeholder="Ej: Palermo, CABA"
-                className="w-full pl-10 pr-3 py-2 bg-black/20 border border-white/10 rounded-lg text-white placeholder-white/30 focus:outline-none focus:border-blue-500"
-              />
-            </div>
+            <label className="block text-sm font-medium text-foreground mb-2">
+              Zona de búsqueda (Google Maps)
+            </label>
+            <Dialog open={isMapOpen} onOpenChange={setIsMapOpen}>
+              <DialogTrigger>
+                <div className="relative cursor-pointer group">
+                  <MapPin className="absolute left-3 top-3 h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
+                  <div className="w-full pl-10 pr-4 py-2.5 bg-background border border-border rounded-xl text-foreground flex items-center justify-between group-hover:border-primary/50 transition-all">
+                    <span className={locationName ? "text-foreground" : "text-muted-foreground"}>
+                      {locationName ? `${locationName} (${radius}km)` : "Seleccionar en el mapa..."}
+                    </span>
+                    <MapIcon className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                </div>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[700px] p-0 overflow-hidden bg-card border-border">
+                <DialogHeader className="p-6 pb-2">
+                  <DialogTitle className="text-xl">Seleccionar Zona en Google Maps</DialogTitle>
+                </DialogHeader>
+
+                <div className="p-6 pt-0 space-y-4">
+                  {/* Buscador de mapa interno */}
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="Buscar ciudad o barrio..."
+                      className="flex-1 px-3 py-2 bg-background border border-border rounded-lg text-sm focus:ring-2 focus:ring-primary outline-none"
+                      value={locationName}
+                      onChange={(e) => setLocationName(e.target.value)}
+                    />
+                    <Button variant="secondary" size="icon">
+                      <Search className="h-4 w-4" />
+                    </Button>
+                  </div>
+
+                  {/* Falso mapa interactivo (Placeholder visual) */}
+                  <div className="relative w-full h-[350px] rounded-xl overflow-hidden border border-border bg-muted">
+                    <iframe
+                      width="100%"
+                      height="100%"
+                      style={{ border: 0 }}
+                      loading="lazy"
+                      allowFullScreen
+                      src={`https://maps.google.com/maps?q=${locationName || "Buenos Aires"}&t=&z=${14 - Math.floor(radius / 10)}&ie=UTF8&iwloc=&output=embed`}
+                    ></iframe>
+
+                    {/* Overlay target interactivo */}
+                    <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+                      <div className="relative flex items-center justify-center">
+                        <div
+                          className="absolute w-32 h-32 bg-primary/20 rounded-full animate-pulse border border-primary/50"
+                          style={{ transform: `scale(${radius / 5})` }}
+                        ></div>
+                        <Crosshair className="h-8 w-8 text-primary drop-shadow-md" />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Radio de búsqueda slider */}
+                  <div className="space-y-3 pt-2">
+                    <div className="flex justify-between items-center">
+                      <label className="text-sm font-medium flex items-center gap-2 text-foreground">
+                        <SlidersHorizontal className="h-4 w-4" />
+                        Radio de búsqueda
+                      </label>
+                      <span className="text-sm font-bold text-primary">{radius} km</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="1"
+                      max="50"
+                      value={radius}
+                      onChange={(e) => setRadius(parseInt(e.target.value))}
+                      className="w-full accent-primary"
+                    />
+                  </div>
+                </div>
+
+                <DialogFooter className="p-4 bg-muted/50 border-t border-border flex justify-between sm:justify-between items-center">
+                  <p className="text-xs text-muted-foreground px-2">
+                    Mové el mapa para ajustar el centro de búsqueda.
+                  </p>
+                  <Button onClick={() => setIsMapOpen(false)} disabled={!locationName}>
+                    Confirmar Zona
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </div>
         </div>
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-          <label className="flex items-center gap-2 cursor-pointer text-sm text-white/80">
-            <input
-              type="checkbox"
-              checked={onlySolidLeads}
-              onChange={(e) => setOnlySolidLeads(e.target.checked)}
-              className="rounded bg-black/20 border-white/20 text-blue-500 focus:ring-blue-500"
-            />
-            Doble Validación: Mostrar solo Leads Sólidos (Sin Web)
+
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-6 pt-4 border-t border-border/50">
+          <label className="flex items-center gap-3 cursor-pointer group">
+            <div className="relative flex items-center">
+              <input
+                type="checkbox"
+                checked={onlySolidLeads}
+                onChange={(e) => setOnlySolidLeads(e.target.checked)}
+                className="peer sr-only"
+              />
+              <div className="w-10 h-6 bg-muted rounded-full peer peer-checked:after:translate-x-full peer-checked:bg-primary after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all"></div>
+            </div>
+            <span className="text-sm font-medium text-foreground group-hover:text-primary transition-colors">
+              Solo negocios sin página web (Alta prioridad)
+            </span>
           </label>
-          <button
-            type="submit"
-            disabled={loading || !query.trim() || !location.trim()}
-            className="flex items-center gap-2 px-6 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-lg transition"
+
+          <Button
+            onClick={handleSearch}
+            disabled={loading || !query.trim() || !locationName.trim()}
+            className="w-full sm:w-auto px-8 h-11 text-base font-semibold"
           >
             {loading ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
+              <>
+                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                Scrapeando zona...
+              </>
             ) : (
-              <Search className="h-4 w-4" />
+              <>
+                <Search className="mr-2 h-5 w-5" />
+                Iniciar Búsqueda
+              </>
             )}
-            Buscar Leads
-          </button>
+          </Button>
         </div>
       </form>
 
-      {/* Results */}
+      {/* RESULTADOS */}
       {searched && (
-        <div className="space-y-4 max-w-4xl">
-          <h2 className="text-lg font-semibold text-white mb-4">
-            Resultados para "{query}" en "{location}"
-          </h2>
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <h2 className="text-2xl font-bold text-foreground">
+              Resultados <span className="text-primary">({results.length})</span>
+            </h2>
+          </div>
 
-          {loading ? (
-            <div className="flex items-center justify-center p-12 text-white/50">
-              <Loader2 className="h-8 w-8 animate-spin" />
+          {results.length === 0 && !loading ? (
+            <div className="text-center py-16 bg-card border border-border rounded-2xl">
+              <Search className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-50" />
+              <h3 className="text-lg font-medium text-foreground">No se encontraron leads</h3>
+              <p className="text-muted-foreground mt-1">
+                Intentá ampliar el radio o cambiar el término de búsqueda.
+              </p>
             </div>
-          ) : filteredResults.length > 0 ? (
-            filteredResults.map((lead) => (
-              <div
-                key={lead.id}
-                className="p-5 bg-white/5 backdrop-blur-md rounded-xl border border-white/10 hover:border-white/20 transition flex flex-col sm:flex-row sm:items-center justify-between gap-4"
-              >
-                <div>
-                  <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                    {lead.name}
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {results.map((lead) => (
+                <div
+                  key={lead.id}
+                  className="bg-card rounded-2xl border border-border p-5 hover:border-primary/50 hover:shadow-md transition-all group"
+                >
+                  <div className="flex justify-between items-start mb-4">
+                    <h3 className="font-bold text-lg text-foreground line-clamp-1 group-hover:text-primary transition-colors">
+                      {lead.name}
+                    </h3>
                     {lead.rating && (
-                      <span className="text-xs bg-yellow-500/20 text-yellow-300 px-2 py-0.5 rounded-full">
+                      <span className="bg-amber-500/10 text-amber-500 text-xs font-bold px-2 py-1 rounded-md border border-amber-500/20">
                         ★ {lead.rating}
                       </span>
                     )}
-                  </h3>
-                  <p className="text-sm text-white/60 mt-1 flex items-center gap-1">
-                    <MapPin className="h-3 w-3" />
-                    {lead.address}
-                  </p>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  {lead.website ? (
+                  </div>
+
+                  <div className="space-y-3 mb-6">
+                    <div className="flex items-start gap-2.5 text-sm text-muted-foreground">
+                      <MapPin className="h-4 w-4 shrink-0 mt-0.5" />
+                      <span className="line-clamp-2">{lead.address}</span>
+                    </div>
+
+                    <div className="flex items-start gap-2.5 text-sm">
+                      <Globe className="h-4 w-4 shrink-0 mt-0.5 text-muted-foreground" />
+                      {lead.website ? (
+                        <a
+                          href={lead.website}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-400 hover:text-blue-300 hover:underline line-clamp-1"
+                        >
+                          {lead.website}
+                        </a>
+                      ) : (
+                        <span className="text-destructive font-medium bg-destructive/10 px-2 py-0.5 rounded border border-destructive/20">
+                          Sin sitio web
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="pt-4 border-t border-border/50">
                     <a
-                      href={lead.website}
+                      href={lead.mapsUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center gap-1 px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white text-sm rounded-lg transition"
+                      className="flex items-center justify-center gap-2 w-full py-2 bg-muted hover:bg-primary/10 text-foreground hover:text-primary rounded-lg transition-colors text-sm font-medium border border-transparent hover:border-primary/30"
                     >
-                      <Globe className="h-4 w-4" />
-                      Web
+                      <MapPin className="h-4 w-4" />
+                      Ver en Google Maps
                     </a>
-                  ) : (
-                    <span className="flex items-center gap-1 px-3 py-1.5 bg-red-500/10 text-red-400 border border-red-500/20 text-sm rounded-lg">
-                      Sin Web
-                    </span>
-                  )}
-                  <a
-                    href={lead.mapsUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-1 px-3 py-1.5 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/20 text-sm rounded-lg transition"
-                  >
-                    <MapPin className="h-4 w-4" />
-                    Maps
-                  </a>
+                  </div>
                 </div>
-              </div>
-            ))
-          ) : (
-            <div className="text-center p-12 text-white/50 bg-white/5 rounded-xl border border-white/10">
-              No se encontraron resultados.
+              ))}
             </div>
           )}
         </div>

@@ -91,8 +91,8 @@ export default function ResourcesPage() {
   return (
     <div className="min-h-screen p-6">
       <div className="flex items-center gap-3 mb-6">
-        <BookOpen className="h-7 w-7 text-white/80" />
-        <h1 className="text-2xl font-bold text-white">Recursos</h1>
+        <BookOpen className="h-7 w-7 text-muted-foreground" />
+        <h1 className="text-2xl font-bold text-foreground">Recursos</h1>
       </div>
 
       {/* Category Filter */}
@@ -103,8 +103,8 @@ export default function ResourcesPage() {
             onClick={() => setFilterCategory(cat)}
             className={`px-3 py-1.5 rounded-lg text-sm transition ${
               filterCategory === cat
-                ? "bg-blue-600 text-white"
-                : "bg-white/5 text-white/60 hover:text-white border border-white/10"
+                ? "bg-primary text-foreground"
+                : "bg-card text-muted-foreground hover:text-foreground border border-border"
             }`}
           >
             {cat === "all" ? "Todos" : cat}
@@ -122,19 +122,19 @@ export default function ResourcesPage() {
           return (
             <div
               key={resource.id}
-              className="p-4 bg-white/5 backdrop-blur-md rounded-xl border border-white/10 hover:border-white/20 transition"
+              className="p-4 bg-card backdrop-blur-md rounded-xl border border-border hover:border-border/80 transition"
             >
               <div className="flex items-start justify-between mb-2">
                 <div className="flex items-center gap-2">
                   <TypeIcon className={`h-4 w-4 ${config.color}`} />
-                  <h3 className="text-sm font-semibold text-white">{resource.name}</h3>
-                  <span className={`text-xs px-2 py-0.5 rounded-full bg-white/10 ${config.color}`}>
+                  <h3 className="text-sm font-semibold text-foreground">{resource.name}</h3>
+                  <span className={`text-xs px-2 py-0.5 rounded-full bg-muted ${config.color}`}>
                     {config.label}
                   </span>
                 </div>
                 <button
                   onClick={() => handleCopy(resource.id, resource.content)}
-                  className="flex items-center gap-1 px-2 py-1 text-xs bg-white/10 hover:bg-white/20 rounded-md transition text-white/70 hover:text-white"
+                  className="flex items-center gap-1 px-2 py-1 text-xs bg-muted hover:bg-muted/80 rounded-md transition text-muted-foreground hover:text-foreground"
                 >
                   {isCopied ? (
                     <>
@@ -157,7 +157,7 @@ export default function ResourcesPage() {
               ) : resource.type === "logo" || resource.type === "image_url" ? (
                 <div className="mt-2 p-3 bg-black/30 rounded-lg flex items-center gap-3">
                   <img src={resource.content} alt={resource.name} className="h-10 object-contain" />
-                  <span className="text-xs text-white/40 truncate">{resource.content}</span>
+                  <span className="text-xs text-muted-foreground truncate">{resource.content}</span>
                 </div>
               ) : (
                 <a

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { AuthProvider } from "@/lib/auth-context";
+import { ThemeProvider } from "@/components/theme-provider";
 import "./globals.css";
 import { Geist } from "next/font/google";
 import { cn } from "@/lib/utils";
@@ -17,11 +18,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es" className={cn("font-sans dark", geist.variable)}>
-      <body>
-        <AuthProvider>
-          <MainLayout>{children}</MainLayout>
-        </AuthProvider>
+    <html lang="es" className={geist.variable} suppressHydrationWarning>
+      <body className="min-h-screen bg-background font-sans antialiased">
+        <ThemeProvider defaultTheme="dark">
+          <AuthProvider>
+            <MainLayout>{children}</MainLayout>
+          </AuthProvider>
+        </ThemeProvider>
       </body>
     </html>
   );
