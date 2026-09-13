@@ -46,16 +46,26 @@ export class PlaneService {
   }
 
   async getWorkspaceMembers(): Promise<any[]> {
+    if (!this.apiKey) return [];
     const data = await this.fetchPlaneAPI("/members/");
     return Array.isArray(data) ? data : data.results || [];
   }
 
   async getProjects(): Promise<any[]> {
+    if (!this.apiKey) return [];
     const data = await this.fetchPlaneAPI("/projects/");
     return Array.isArray(data) ? data : data.results || [];
   }
 
   async getActiveTicketsForUser(userEmail: string): Promise<any[]> {
+    if (!this.apiKey) {
+      this.logger.warn("Plane API keys missing. Returning mock tickets for development.");
+      return [
+        { id: "mock-1", name: "Fix Login Bug", project: { id: "p1", name: "Yield Hub" } },
+        { id: "mock-2", name: "Build Dashboard", project: { id: "p1", name: "Yield Hub" } },
+      ];
+    }
+
     const members = await this.getWorkspaceMembers();
     const planeUser = members.find((m: any) => {
       const email = m.member?.email || m.email;

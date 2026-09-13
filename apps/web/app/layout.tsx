@@ -17,7 +17,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es" className={cn("font-sans", geist.variable)}>
+    <html lang="es" className={cn("font-sans dark", geist.variable)}>
       <body>
         <AuthProvider>
           <MainLayout>{children}</MainLayout>
