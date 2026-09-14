@@ -18,3 +18,13 @@ model User {
 
   @@map("users")
 }
+
+model Project {
+  id             String   @id @default(cuid())
+  name           String
+  neonProjectId  String?  @map("neon_project_id")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  @@map("projects")
+}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -16,9 +16,7 @@ import {
   Plus,
   MoreVertical,
   Settings,
-  ShieldAlert,
   CheckSquare,
-  ListTodo,
   Terminal,
   Key,
   ServerCog,
@@ -105,10 +103,26 @@ const MOCK_DNS = [
   { type: "CNAME", name: "www", content: "cname.vercel-dns.com", ttl: "Automático" },
 ];
 
-export default function ProjectDetailsPage({ params }: { params: { id: string } }) {
+export default function ProjectDetailsPage({ params: _params }: { params: { id: string } }) {
   const [activeTab, setActiveTab] = useState("overview");
   const [infraTab, setInfraTab] = useState("logs");
   const [showEnvs, setShowEnvs] = useState<Record<string, boolean>>({});
+  const [neonConsumption, setNeonConsumption] = useState<any>(null);
+
+  useEffect(() => {
+    async function fetchConsumption() {
+      try {
+        const res = await fetch(`http://localhost:4000/neon/projects/${PROJECT.id}/consumption`);
+        if (res.ok) {
+          const data = await res.json();
+          setNeonConsumption(data);
+        }
+      } catch (err) {
+        console.error("Failed to fetch Neon consumption", err);
+      }
+    }
+    fetchConsumption();
+  }, []);
 
   const toggleEnv = (key: string) => {
     setShowEnvs((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -239,6 +253,35 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
                     <h3 className="text-base font-semibold text-foreground font-mono bg-muted px-2 py-1 rounded inline-block">
                       {PROJECT.db_neon}
                     </h3>
+                    {neonConsumption &&
+                      neonConsumption.project &&
+                      neonConsumption.project.consumption && (
+                        <div className="mt-3 p-3 bg-muted/50 rounded-lg border border-border text-xs text-muted-foreground grid grid-cols-2 gap-2">
+                          <div>
+                            <span className="block text-xs uppercase font-semibold text-foreground/70">
+                              Storage
+                            </span>
+                            <span className="text-sm font-medium text-foreground">
+                              {(
+                                neonConsumption.project.consumption.data_storage_bytes_hour /
+                                (1024 * 1024)
+                              ).toFixed(2)}{" "}
+                              MB
+                            </span>
+                          </div>
+                          <div>
+                            <span className="block text-xs uppercase font-semibold text-foreground/70">
+                              Compute
+                            </span>
+                            <span className="text-sm font-medium text-foreground">
+                              {(
+                                neonConsumption.project.consumption.compute_time_seconds / 3600
+                              ).toFixed(2)}{" "}
+                              hrs
+                            </span>
+                          </div>
+                        </div>
+                      )}
                   </div>
                   <Badge status="Conectado" />
                 </div>
