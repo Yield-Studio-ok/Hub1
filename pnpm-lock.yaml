@@ -71,6 +71,9 @@ importers:
       rxjs:
         specifier: ^7.8.2
         version: 7.8.2
+      systeminformation:
+        specifier: ^5.33.10
+        version: 5.33.10
     devDependencies:
       '@nestjs/cli':
         specifier: ^11.0.6

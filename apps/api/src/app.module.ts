@@ -8,6 +8,7 @@ import { UsersModule } from "./modules/users/users.module";
 import { CloudflareModule } from "./modules/cloudflare/cloudflare.module";
 import { MetricsModule } from "./modules/metrics/metrics.module";
 import { PlaneModule } from "./modules/plane/plane.module";
+import { InfraModule } from "./modules/infra/infra.module";
 import { HealthController } from "./health.controller";
 
 @Module({
@@ -25,6 +26,7 @@ import { HealthController } from "./health.controller";
     CloudflareModule,
     MetricsModule,
     PlaneModule,
+    InfraModule,
   ],
   controllers: [HealthController],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
