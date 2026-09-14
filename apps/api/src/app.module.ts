@@ -8,6 +8,7 @@ import { UsersModule } from "./modules/users/users.module";
 import { CloudflareModule } from "./modules/cloudflare/cloudflare.module";
 import { MetricsModule } from "./modules/metrics/metrics.module";
 import { PlaneModule } from "./modules/plane/plane.module";
+import { TimerModule } from "./modules/timer/timer.module";
 import { InfraModule } from "./modules/infra/infra.module";
 import { NeonModule } from "./modules/neon/neon.module";
 import { HealthController } from "./health.controller";
@@ -27,6 +28,7 @@ import { HealthController } from "./health.controller";
     CloudflareModule,
     MetricsModule,
     PlaneModule,
+    TimerModule,
     InfraModule,
     NeonModule,
   ],

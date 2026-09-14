@@ -28,3 +28,15 @@ model Project {
 
   @@map("projects")
 }
+
+model TimeLog {
+  id              String   @id @default(cuid())
+  ticketId        String   @map("ticket_id")
+  projectId       String   @map("project_id")
+  durationSeconds Int      @map("duration_seconds")
+  userEmail       String   @map("user_email")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@map("time_logs")
+}
