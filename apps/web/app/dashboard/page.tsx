@@ -1,7 +1,8 @@
 "use client";
 
-import { GitCommit, Rocket, Activity, Clock } from "lucide-react";
+import { GitCommit, Rocket, Clock } from "lucide-react";
 import VpsStatusWidget from "../../components/dashboard/VpsStatusWidget";
+import ActiveProjectsWidget from "../../components/dashboard/ActiveProjectsWidget";
 
 // Placeholder data — will be replaced by real GitHub API data (Ticket 2.3)
 const MOCK_COMMITS = [
@@ -64,18 +65,7 @@ export default function DashboardPage() {
           </p>
         </div>
 
-        <div className="p-5 bg-card rounded-2xl border border-border shadow-sm flex flex-col justify-between">
-          <div className="flex items-center gap-3 mb-2">
-            <Activity className="h-5 w-5 text-amber-500" />
-            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-              Proyectos Activos
-            </h3>
-          </div>
-          <p className="text-4xl font-extrabold text-foreground">3</p>
-          <p className="text-xs text-muted-foreground mt-2 border-t border-border/50 pt-2">
-            Landing, E-commerce, Web App
-          </p>
-        </div>
+        <ActiveProjectsWidget />
       </div>
 
       {/* Recent Commits */}
