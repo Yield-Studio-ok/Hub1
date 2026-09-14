@@ -23,6 +23,8 @@ model Project {
   id             String   @id @default(cuid())
   name           String
   neonProjectId  String?  @map("neon_project_id")
+  repoUrl        String?  @map("repo_url")
+  deployUrl      String?  @map("deploy_url")
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
 

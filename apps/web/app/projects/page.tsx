@@ -10,6 +10,8 @@ interface Project {
   id: string;
   name: string;
   type: ProjectType;
+  repoUrl?: string;
+  deployUrl?: string;
   createdAt: string;
 }
 
@@ -32,6 +34,8 @@ export default function ProjectsPage() {
   const [projects, setProjects] = useState<Project[]>(MOCK_PROJECTS);
   const [showModal, setShowModal] = useState(false);
   const [newName, setNewName] = useState("");
+  const [newRepoUrl, setNewRepoUrl] = useState("");
+  const [newDeployUrl, setNewDeployUrl] = useState("");
   const [newType, setNewType] = useState<ProjectType>("WEB_APP");
 
   function handleCreate() {
@@ -39,11 +43,15 @@ export default function ProjectsPage() {
     const project: Project = {
       id: crypto.randomUUID(),
       name: newName.trim(),
+      repoUrl: newRepoUrl.trim() || undefined,
+      deployUrl: newDeployUrl.trim() || undefined,
       type: newType,
       createdAt: new Date().toISOString().split("T")[0],
     };
     setProjects((prev) => [project, ...prev]);
     setNewName("");
+    setNewRepoUrl("");
+    setNewDeployUrl("");
     setNewType("WEB_APP");
     setShowModal(false);
   }
@@ -102,6 +110,28 @@ export default function ProjectsPage() {
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
               placeholder="Mi proyecto..."
+              className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring mb-4"
+            />
+
+            <label className="block text-sm text-muted-foreground mb-1">
+              URL del Repositorio (Opcional)
+            </label>
+            <input
+              type="url"
+              value={newRepoUrl}
+              onChange={(e) => setNewRepoUrl(e.target.value)}
+              placeholder="https://github.com/..."
+              className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring mb-4"
+            />
+
+            <label className="block text-sm text-muted-foreground mb-1">
+              URL de Despliegue (Opcional)
+            </label>
+            <input
+              type="url"
+              value={newDeployUrl}
+              onChange={(e) => setNewDeployUrl(e.target.value)}
+              placeholder="https://test.vercel.app..."
               className="w-full px-3 py-2 bg-background border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring mb-4"
             />
 
