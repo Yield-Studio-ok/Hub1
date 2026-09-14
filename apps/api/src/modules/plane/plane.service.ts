@@ -105,4 +105,13 @@ export class PlaneService {
 
     return allTickets;
   }
+
+  async addCommentToIssue(projectId: string, issueId: string, commentHtml: string): Promise<any> {
+    if (!this.apiKey) return null;
+    return this.fetchPlaneAPI(`/projects/${projectId}/issues/${issueId}/comments/`, {
+      method: "POST",
+      body: JSON.stringify({ html_content: commentHtml }),
+    });
+  }
 }
+
