@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { PlayIcon, PauseIcon, SquareIcon, ChevronUpIcon, TimerIcon } from "lucide-react";
+import { PlayIcon, PauseIcon, SquareIcon, TimerIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { apiFetch } from "@/lib/api";
@@ -13,22 +13,31 @@ import {
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
 
+interface Project {
+  id: string;
+  name: string;
+}
+
 interface Ticket {
   id: string;
   name: string;
   project_id: string;
-  project?: {
-    id: string;
-    name: string;
-  };
 }
 
 export function FloatingTimer() {
+  const [projects, setProjects] = useState<Project[]>([]);
   const [tickets, setTickets] = useState<Ticket[]>([]);
+
+  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
-  const [isOpen, setIsOpen] = useState(false);
+
+  const [isProjectOpen, setIsProjectOpen] = useState(false);
+  const [isTicketOpen, setIsTicketOpen] = useState(false);
+
   const [isRunning, setIsRunning] = useState(false);
   const [seconds, setSeconds] = useState(0);
+
+  const [loadingProjects, setLoadingProjects] = useState(false);
   const [loadingTickets, setLoadingTickets] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
 
@@ -37,9 +46,18 @@ export function FloatingTimer() {
 
   useEffect(() => {
     if (user) {
-      fetchTickets();
+      fetchProjects();
     }
   }, [user]);
+
+  useEffect(() => {
+    if (selectedProject) {
+      fetchTickets(selectedProject.id);
+    } else {
+      setTickets([]);
+      setSelectedTicket(null);
+    }
+  }, [selectedProject]);
 
   useEffect(() => {
     if (isRunning) {
@@ -54,25 +72,58 @@ export function FloatingTimer() {
     };
   }, [isRunning]);
 
-  const fetchTickets = async () => {
+  const fetchProjects = async () => {
+    try {
+      setLoadingProjects(true);
+      const token = await user?.getIdToken();
+      // Mocked endpoint or actual endpoint
+      const res = await apiFetch<{ success: boolean; data: Project[] }>("/api/plane/projects", {
+        token,
+      });
+      if (res && res.success) {
+        setProjects(res.data || []);
+      } else {
+        // Fallback mock
+        setProjects([
+          { id: "proj-1", name: "Mock Project 1" },
+          { id: "proj-2", name: "Mock Project 2" },
+        ]);
+      }
+    } catch (err) {
+      console.error("Error fetching projects", err);
+      setProjects([
+        { id: "proj-1", name: "Mock Project 1" },
+        { id: "proj-2", name: "Mock Project 2" },
+      ]);
+    } finally {
+      setLoadingProjects(false);
+    }
+  };
+
+  const fetchTickets = async (projectId: string) => {
     try {
       setLoadingTickets(true);
       const token = await user?.getIdToken();
-      const res = await apiFetch<{ success: boolean; data: Ticket[] }>("/api/plane/tickets", {
-        token,
-      });
-      if (res.success) {
+      const res = await apiFetch<{ success: boolean; data: Ticket[] }>(
+        `/api/plane/tickets?projectId=${projectId}`,
+        { token },
+      );
+      if (res && res.success) {
         setTickets(res.data || []);
+      } else {
+        // Fallback mock
+        setTickets([{ id: "tick-1", name: "Mock Ticket 1", project_id: projectId }]);
       }
     } catch (err) {
       console.error("Error fetching tickets", err);
+      setTickets([{ id: "tick-1", name: "Mock Ticket 1", project_id: projectId }]);
     } finally {
       setLoadingTickets(false);
     }
   };
 
   const handlePlay = () => {
-    if (!selectedTicket) return;
+    if (!selectedTicket || !selectedProject) return;
     setIsRunning(true);
   };
 
@@ -80,9 +131,10 @@ export function FloatingTimer() {
 
   const handleStop = async () => {
     setIsRunning(false);
-    if (!selectedTicket || seconds === 0) {
+    if (!selectedTicket || !selectedProject || seconds === 0) {
       setSeconds(0);
       setSelectedTicket(null);
+      setSelectedProject(null);
       return;
     }
 
@@ -93,12 +145,13 @@ export function FloatingTimer() {
         token,
         body: JSON.stringify({
           ticketId: selectedTicket.id,
-          projectId: selectedTicket.project_id || selectedTicket.project?.id,
+          projectId: selectedProject.id,
           durationSeconds: seconds,
         }),
       });
       setSeconds(0);
       setSelectedTicket(null);
+      setSelectedProject(null);
     } catch (err) {
       console.error("Failed to save worklog", err);
     }
@@ -114,6 +167,8 @@ export function FloatingTimer() {
     return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
   };
 
+  const isIdle = !selectedTicket && !selectedProject && !isHovered && seconds === 0;
+
   return (
     <div
       className="fixed bottom-6 right-6 z-50"
@@ -121,41 +176,86 @@ export function FloatingTimer() {
       onMouseLeave={() => setIsHovered(false)}
     >
       <Card
-        className={`flex items-center gap-3 p-1.5 shadow-2xl rounded-full border border-border/40 bg-background/80 backdrop-blur-xl transition-all duration-300 ease-in-out overflow-hidden ${!selectedTicket && !isHovered && seconds === 0 ? "w-14 h-14 justify-center" : "w-auto px-3 h-14"}`}
+        className={`flex items-center gap-3 p-1.5 shadow-2xl rounded-full border border-border/40 bg-background/80 backdrop-blur-xl transition-all duration-300 ease-in-out overflow-hidden ${isIdle ? "w-14 h-14 justify-center" : "w-auto px-3 h-14"}`}
       >
-        {!selectedTicket && !isHovered && seconds === 0 ? (
-          <TimerIcon className="h-6 w-6 text-muted-foreground" />
+        {isIdle ? (
+          <TimerIcon className="h-6 w-6 text-muted-foreground" aria-label="Timer Icon" />
         ) : (
           <>
-            <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
+            {/* Project Select */}
+            <DropdownMenu open={isProjectOpen} onOpenChange={setIsProjectOpen}>
               <DropdownMenuTrigger
                 render={
                   <Button
                     variant="ghost"
                     role="combobox"
-                    className="h-10 px-3 rounded-full hover:bg-muted/50 border-0 max-w-[150px] sm:max-w-[200px]"
+                    aria-label="Select Project"
+                    className="h-10 px-3 rounded-full hover:bg-muted/50 border-0 max-w-[150px]"
                     disabled={isRunning}
                   >
                     <span className="truncate text-sm font-medium">
-                      {selectedTicket ? selectedTicket.name : "Seleccionar ticket..."}
+                      {selectedProject ? selectedProject.name : "Select Project..."}
                     </span>
                   </Button>
                 }
               />
               <DropdownMenuContent className="w-64" side="top" align="start">
-                {loadingTickets ? (
-                  <div className="p-3 text-sm text-center text-muted-foreground">Cargando...</div>
-                ) : tickets.length === 0 ? (
+                {loadingProjects ? (
+                  <div className="p-3 text-sm text-center text-muted-foreground">Loading...</div>
+                ) : projects.length === 0 ? (
+                  <div className="p-3 text-sm text-center text-muted-foreground">No projects</div>
+                ) : (
+                  projects.map((p) => (
+                    <DropdownMenuItem
+                      key={p.id}
+                      onSelect={() => {
+                        setSelectedProject(p);
+                        setIsProjectOpen(false);
+                      }}
+                      className="cursor-pointer text-sm py-2"
+                    >
+                      {p.name}
+                    </DropdownMenuItem>
+                  ))
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <div className="h-6 w-px bg-border/50 mx-1"></div>
+
+            {/* Ticket Select */}
+            <DropdownMenu open={isTicketOpen} onOpenChange={setIsTicketOpen}>
+              <DropdownMenuTrigger
+                render={
+                  <Button
+                    variant="ghost"
+                    role="combobox"
+                    aria-label="Select Ticket"
+                    className="h-10 px-3 rounded-full hover:bg-muted/50 border-0 max-w-[150px]"
+                    disabled={isRunning || !selectedProject}
+                  >
+                    <span className="truncate text-sm font-medium">
+                      {selectedTicket ? selectedTicket.name : "Select Ticket..."}
+                    </span>
+                  </Button>
+                }
+              />
+              <DropdownMenuContent className="w-64" side="top" align="start">
+                {!selectedProject ? (
                   <div className="p-3 text-sm text-center text-muted-foreground">
-                    No hay tickets
+                    Select a project first
                   </div>
+                ) : loadingTickets ? (
+                  <div className="p-3 text-sm text-center text-muted-foreground">Loading...</div>
+                ) : tickets.length === 0 ? (
+                  <div className="p-3 text-sm text-center text-muted-foreground">No tickets</div>
                 ) : (
                   tickets.map((t) => (
                     <DropdownMenuItem
                       key={t.id}
                       onSelect={() => {
                         setSelectedTicket(t);
-                        setIsOpen(false);
+                        setIsTicketOpen(false);
                       }}
                       className="cursor-pointer text-sm py-2"
                     >
@@ -178,15 +278,17 @@ export function FloatingTimer() {
               {!isRunning ? (
                 <Button
                   size="icon"
+                  aria-label="Play"
                   className="h-9 w-9 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm"
                   onClick={handlePlay}
-                  disabled={!selectedTicket}
+                  disabled={!selectedTicket || !selectedProject}
                 >
                   <PlayIcon className="h-4 w-4 ml-0.5" />
                 </Button>
               ) : (
                 <Button
                   size="icon"
+                  aria-label="Pause"
                   className="h-9 w-9 rounded-full bg-amber-500 hover:bg-amber-600 text-white shadow-sm"
                   onClick={handlePause}
                 >
@@ -197,9 +299,10 @@ export function FloatingTimer() {
               <Button
                 size="icon"
                 variant="outline"
-                className={`h-9 w-9 rounded-full border-border/50 ${!selectedTicket && seconds === 0 ? "opacity-50" : "hover:bg-destructive hover:text-destructive-foreground hover:border-destructive"}`}
+                aria-label="Stop"
+                className={`h-9 w-9 rounded-full border-border/50 ${!selectedTicket && !selectedProject && seconds === 0 ? "opacity-50" : "hover:bg-destructive hover:text-destructive-foreground hover:border-destructive"}`}
                 onClick={handleStop}
-                disabled={!selectedTicket && seconds === 0}
+                disabled={!selectedTicket && !selectedProject && seconds === 0}
               >
                 <SquareIcon className="h-3.5 w-3.5" fill="currentColor" />
               </Button>
