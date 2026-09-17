@@ -6,10 +6,10 @@ export class InfraService {
   async getVpsStatus() {
     const [load, mem, procs] = await Promise.all([si.currentLoad(), si.mem(), si.processes()]);
 
-    const topProcesses = procs.list
-      .toSorted((a, b) => b.cpu - a.cpu)
+    const topProcesses = [...procs.list]
+      .sort((a: any, b: any) => b.cpu - a.cpu)
       .slice(0, 5)
-      .map((p) => ({
+      .map((p: any) => ({
         name: p.name,
         cpu: p.cpu,
         mem: p.mem,
