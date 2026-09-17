@@ -50,3 +50,5 @@ firebase-credentials.json
 
 # Agent skills (local only)
 .agents/skills/
+patch_*.js
+patch_*.js
