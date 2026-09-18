@@ -43,19 +43,15 @@ Cuando el usuario te pase un requerimiento, debes seguir este ciclo exacto apoy�
 
 ## 🔀 ENRUTAMIENTO DE MODELOS POR DIFICULTAD
 
-Al estimar la tarea en Linear, debes asignar estrictamente el modelo de IA correspondiente para optimizar costos y capacidad (basado en el ranking de BenchLM.ai):
+Al estimar la tarea en Linear, debes asignar estrictamente el modelo de IA correspondiente para optimizar costos, velocidad y capacidad (basado en BenchLM.ai):
 
 - **Nivel 0 (Dificultad Extrema / Usuario / Decisión de Negocio) ➔ `Usuario`**
   _(Uso: Tareas que requieren intervención humana directa, definición macro de arquitectura, gestión de pagos o aprovisionamiento de credenciales/secrets críticos)._
 - **Dificultad 1 a 3 ➔ `Gemini 3.1 Flash-Lite (Low)`**
-  _(Uso: Tareas triviales o mecánicas, formateo de código, soluciones de linter, tipado estático simple, refactors cosméticos)._
-- **Dificultad 3 a 5 ➔ `Gemini 3.5 Flash (Medium)`**
-  _(Uso: Lógica simple a media, componentes UI estándar, endpoints CRUD sencillos, tests unitarios directos)._
-- **Dificultad 5 a 7 ➔ `Gemini 3.6 Flash (Medium)`**
-  _(Uso: Lógica de negocio avanzada, integración de APIs externas, componentes interactivos con estado, refactors moderados y optimizaciones de rendimiento)._
-- **Dificultad 7 a 8 ➔ `Gemini 3.1 Pro (High)`**
-  _(Uso: Análisis conceptual profundo, auditorías de seguridad, diseño y migración de esquemas de datos complejos, tareas pesadas de razonamiento puro)._
+  _(Uso: Tareas triviales o mecánicas, formateo de código, soluciones de linter, tipado estático simple, refactors cosméticos; máximo ahorro de tokens)._
+- **Dificultad 4 a 7 ➔ `Gemini 3.8 Flash (Medium)`**
+  _(Uso: Caballo de batalla principal para el 80% del desarrollo diario. Lógica de negocio, integración de APIs externas, componentes interactivos UI, endpoints CRUD y tests unitarios directos)._
 - **Dificultad 8 a 10 ➔ `Gemini 3.8 Flash (High)`**
-  _(Uso: **Modelo Workhorse de Élite** —clasificado por encima de 3.1 Pro según el ranking de BenchLM.ai—. Especializado en software engineering, flujos agenticos autónomos multi-paso, debugging severo de fallos críticos, refactors cross-file masivos y orquestación profunda con máxima velocidad, costo-eficiencia y precisión técnica)._
+  _(Uso: **Modelo Workhorse de Élite** con pensamiento extendido —supera a 3.1 Pro según BenchLM.ai—. Especializado en SWE complejo, flujos agenticos autónomos multi-paso, debugging severo de fallos críticos, refactors cross-file masivos y orquestación profunda)._
 
 **INSTRUCCIÓN DE INICIO:** Si estás leyendo esto por orden del usuario, confirma que has entendido tus directivas, lee el `AGENT.md` y queda a la espera del requerimiento.
