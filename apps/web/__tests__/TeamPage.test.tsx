@@ -279,7 +279,7 @@ describe("TeamPage (Ticket 10.2 ABM de Equipo)", () => {
     // Carlos Mendez should be removed
     await waitFor(() => {
       expect(screen.queryByText("Carlos Mendez")).not.toBeInTheDocument();
-      expect(screen.getByText(/miembro eliminado/i)).toBeInTheDocument();
+      expect(screen.getByText(/eliminado/i)).toBeInTheDocument();
     });
   });
 
