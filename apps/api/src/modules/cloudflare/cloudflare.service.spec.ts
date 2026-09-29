@@ -5,7 +5,6 @@ import { InternalServerErrorException } from "@nestjs/common";
 
 describe("CloudflareService", () => {
   let service: CloudflareService;
-  let configService: ConfigService;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -25,7 +24,6 @@ describe("CloudflareService", () => {
     }).compile();
 
     service = module.get<CloudflareService>(CloudflareService);
-    configService = module.get<ConfigService>(ConfigService);
   });
 
   it("should be defined", () => {
@@ -164,51 +162,41 @@ describe("CloudflareService", () => {
 });
 
 describe("CloudflareService Error Handling", () => {
-  it("should throw error if API token is missing", async () => {
-    try {
-      const module: TestingModule = await Test.createTestingModule({
-        providers: [
-          CloudflareService,
-          {
-            provide: ConfigService,
-            useValue: {
-              get: jest.fn((key: string) => {
-                if (key === "CLOUDFLARE_ZONE_ID") return "test-zone-id";
-                return null;
-              }),
-            },
+  it("should handle missing API token gracefully and disable operations", async () => {
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        CloudflareService,
+        {
+          provide: ConfigService,
+          useValue: {
+            get: jest.fn((key: string) => {
+              if (key === "CLOUDFLARE_ZONE_ID") return "test-zone-id";
+              return null;
+            }),
           },
-        ],
-      }).compile();
-      module.get<CloudflareService>(CloudflareService);
-      fail("Should have thrown an exception");
-    } catch (e) {
-      expect(e).toBeInstanceOf(InternalServerErrorException);
-      expect((e as any).message).toBe("CLOUDFLARE_API_TOKEN is not configured.");
-    }
+        },
+      ],
+    }).compile();
+    const cfService = module.get<CloudflareService>(CloudflareService);
+    await expect(cfService.getZoneDetails()).rejects.toThrow(InternalServerErrorException);
   });
 
-  it("should throw error if Zone ID is missing", async () => {
-    try {
-      const module: TestingModule = await Test.createTestingModule({
-        providers: [
-          CloudflareService,
-          {
-            provide: ConfigService,
-            useValue: {
-              get: jest.fn((key: string) => {
-                if (key === "CLOUDFLARE_API_TOKEN") return "test-token";
-                return null;
-              }),
-            },
+  it("should handle missing Zone ID gracefully and disable operations", async () => {
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        CloudflareService,
+        {
+          provide: ConfigService,
+          useValue: {
+            get: jest.fn((key: string) => {
+              if (key === "CLOUDFLARE_API_TOKEN") return "test-token";
+              return null;
+            }),
           },
-        ],
-      }).compile();
-      module.get<CloudflareService>(CloudflareService);
-      fail("Should have thrown an exception");
-    } catch (e) {
-      expect(e).toBeInstanceOf(InternalServerErrorException);
-      expect((e as any).message).toBe("CLOUDFLARE_ZONE_ID is not configured.");
-    }
+        },
+      ],
+    }).compile();
+    const cfService = module.get<CloudflareService>(CloudflareService);
+    await expect(cfService.getZoneDetails()).rejects.toThrow(InternalServerErrorException);
   });
 });

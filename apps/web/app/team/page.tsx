@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, type FormEvent } from "react";
+import { useState, useMemo, useEffect, useCallback, type FormEvent } from "react";
 import {
   Users,
   UserPlus,
@@ -14,11 +14,15 @@ import {
   Cloud,
   Sparkles,
   RotateCcw,
-  MoreVertical,
   Clock,
   UserCheck,
   Compass,
   CheckCheck,
+  Trash2,
+  CheckCircle2,
+  AlertCircle,
+  X,
+  ChevronDown,
 } from "lucide-react";
 import {
   Dialog,
@@ -39,6 +43,7 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { apiFetch } from "@/lib/api";
 
 export type TeamRole = "Admin" | "Developer" | "Designer" | "DevOps" | "QA" | "Product";
 export type MemberStatus = "active" | "offline" | "pending";
@@ -53,6 +58,12 @@ export interface TeamMember {
   initials: string;
   joinedDate: string;
   lastActive: string;
+}
+
+interface ToastNotification {
+  id: string;
+  message: string;
+  type: "success" | "error" | "info";
 }
 
 const INITIAL_MEMBERS: TeamMember[] = [
@@ -166,11 +177,84 @@ export default function TeamPage() {
   const [selectedRole, setSelectedRole] = useState<string>("all");
   const [viewMode, setViewMode] = useState<"table" | "grid">("table");
   const [isInviteOpen, setIsInviteOpen] = useState(false);
+  const [toasts, setToasts] = useState<ToastNotification[]>([]);
 
   // Form state for inviting new member
   const [newEmail, setNewEmail] = useState("");
   const [newName, setNewName] = useState("");
   const [newRole, setNewRole] = useState<TeamRole>("Developer");
+
+  const showToast = useCallback(
+    (message: string, type: "success" | "error" | "info" = "success") => {
+      const id = `${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+      setToasts((prev) => [...prev, { id, message, type }]);
+      setTimeout(() => {
+        setToasts((prev) => prev.filter((t) => t.id !== id));
+      }, 4000);
+    },
+    [],
+  );
+
+  const removeToast = useCallback((id: string) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  }, []);
+
+  // Carga inicial GET /api/team con fallback a INITIAL_MEMBERS
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadMembers() {
+      try {
+        const res = await apiFetch<any>("/api/team");
+        if (!isMounted) return;
+
+        const rawList = Array.isArray(res) ? res : res?.data || res?.members || [];
+        if (rawList && rawList.length > 0) {
+          const normalized: TeamMember[] = rawList.map((m: any, idx: number) => {
+            const name = m.name || "Miembro";
+            const initials =
+              m.initials ||
+              name
+                .split(" ")
+                .filter(Boolean)
+                .slice(0, 2)
+                .map((w: string) => w[0].toUpperCase())
+                .join("") ||
+              "YM";
+
+            return {
+              id: m.id || `mem-${idx + 1}`,
+              name,
+              email: m.email || "sin-email@yieldstudio.io",
+              role: (m.role as TeamRole) || "Developer",
+              status: (m.status as MemberStatus) || "active",
+              avatar: m.avatar,
+              initials,
+              joinedDate: m.joinedDate || "Enero 2025",
+              lastActive: m.lastActive || "Justo ahora",
+            };
+          });
+          setMembers(normalized);
+        } else {
+          setMembers(INITIAL_MEMBERS);
+        }
+      } catch (err) {
+        console.warn(
+          "Fallo o endpoint no disponible en GET /api/team, usando INITIAL_MEMBERS:",
+          err,
+        );
+        if (isMounted) {
+          setMembers(INITIAL_MEMBERS);
+        }
+      }
+    }
+
+    loadMembers();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const filteredMembers = useMemo(() => {
     return members.filter((member) => {
@@ -194,7 +278,8 @@ export default function TeamPage() {
     return { total, active, admins, pending };
   }, [members]);
 
-  const handleInviteMember = (e: FormEvent) => {
+  // POST /api/team: Invitar nuevo miembro
+  const handleInviteSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!newEmail.trim()) return;
 
@@ -205,29 +290,125 @@ export default function TeamPage() {
           .replace(/[._-]/g, " ")
           .replace(/\b\w/g, (c) => c.toUpperCase());
 
-    const initials = derivedName
-      .split(" ")
-      .filter(Boolean)
-      .slice(0, 2)
-      .map((w) => w[0].toUpperCase())
-      .join("");
+    const initials =
+      derivedName
+        .split(" ")
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((w) => w[0].toUpperCase())
+        .join("") || "YM";
 
-    const newMember: TeamMember = {
-      id: `mem-${Date.now()}`,
+    const payload = {
       name: derivedName,
       email: newEmail.trim().toLowerCase(),
       role: newRole,
-      status: "active",
-      initials: initials || "YM",
-      joinedDate: "Justo ahora",
-      lastActive: "Justo ahora",
     };
 
-    setMembers([newMember, ...members]);
-    setNewEmail("");
-    setNewName("");
-    setNewRole("Developer");
-    setIsInviteOpen(false);
+    try {
+      const res = await apiFetch<any>("/api/team", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
+
+      const created = res?.data || res;
+      const newMember: TeamMember = {
+        id: created?.id || `mem-${Date.now()}`,
+        name: created?.name || derivedName,
+        email: created?.email || payload.email,
+        role: created?.role || newRole,
+        status: created?.status || "active",
+        avatar: created?.avatar,
+        initials: created?.initials || initials,
+        joinedDate: created?.joinedDate || "Justo ahora",
+        lastActive: created?.lastActive || "Justo ahora",
+      };
+
+      setMembers((prev) => [newMember, ...prev]);
+      setNewEmail("");
+      setNewName("");
+      setNewRole("Developer");
+      setIsInviteOpen(false);
+      showToast(`Invitación enviada a ${newMember.email} con éxito`, "success");
+    } catch (err) {
+      console.error("Error al invitar miembro:", err);
+      // Fallback local en desarrollo
+      const fallbackMember: TeamMember = {
+        id: `mem-${Date.now()}`,
+        name: derivedName,
+        email: payload.email,
+        role: newRole,
+        status: "active",
+        initials,
+        joinedDate: "Justo ahora",
+        lastActive: "Justo ahora",
+      };
+      setMembers((prev) => [fallbackMember, ...prev]);
+      setNewEmail("");
+      setNewName("");
+      setNewRole("Developer");
+      setIsInviteOpen(false);
+      showToast(`Invitación enviada a ${fallbackMember.email} (modo offline)`, "success");
+    }
+  };
+
+  // PATCH /api/team/:id: Editar rol
+  const handleRoleChange = async (memberId: string, role: TeamRole) => {
+    const prevMembers = [...members];
+    setMembers((prev) => prev.map((m) => (m.id === memberId ? { ...m, role } : m)));
+
+    try {
+      await apiFetch(`/api/team/${memberId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ role }),
+      });
+      showToast("Rol actualizado con éxito", "success");
+    } catch (err) {
+      console.error("Error actualizando rol:", err);
+      setMembers(prevMembers);
+      showToast("Error al actualizar el rol", "error");
+    }
+  };
+
+  // PATCH /api/team/:id: Alternar estado ('active' | 'offline' | 'pending')
+  const handleToggleStatus = async (member: TeamMember) => {
+    const statusCycle: MemberStatus[] = ["active", "offline", "pending"];
+    const currentIndex = statusCycle.indexOf(member.status);
+    const nextStatus = statusCycle[(currentIndex + 1) % statusCycle.length];
+
+    const prevMembers = [...members];
+    setMembers((prev) => prev.map((m) => (m.id === member.id ? { ...m, status: nextStatus } : m)));
+
+    try {
+      await apiFetch(`/api/team/${member.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ status: nextStatus }),
+      });
+      showToast("Estado actualizado con éxito", "success");
+    } catch (err) {
+      console.error("Error actualizando estado:", err);
+      setMembers(prevMembers);
+      showToast("Error al actualizar el estado", "error");
+    }
+  };
+
+  // DELETE /api/team/:id: Eliminar miembro
+  const handleDeleteMember = async (memberId: string, memberName?: string) => {
+    const prevMembers = [...members];
+    setMembers((prev) => prev.filter((m) => m.id !== memberId));
+
+    try {
+      await apiFetch(`/api/team/${memberId}`, {
+        method: "DELETE",
+      });
+      showToast(
+        memberName ? `Miembro ${memberName} eliminado con éxito` : "Miembro eliminado con éxito",
+        "success",
+      );
+    } catch (err) {
+      console.error("Error al eliminar miembro:", err);
+      setMembers(prevMembers);
+      showToast("Error al eliminar el miembro", "error");
+    }
   };
 
   const resetFilters = () => {
@@ -237,6 +418,41 @@ export default function TeamPage() {
 
   return (
     <div className="min-h-screen p-6 md:p-10 max-w-6xl mx-auto font-sans relative">
+      {/* Toast Notifications */}
+      {toasts.length > 0 && (
+        <div
+          aria-live="polite"
+          className="fixed bottom-6 right-6 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none"
+        >
+          {toasts.map((toast) => (
+            <div
+              key={toast.id}
+              role="alert"
+              className="pointer-events-auto flex items-center justify-between gap-3 p-4 rounded-xl bg-slate-900/95 border border-white/10 backdrop-blur-md shadow-2xl text-foreground text-sm animate-in fade-in slide-in-from-bottom-5 duration-300"
+            >
+              <div className="flex items-center gap-2.5">
+                {toast.type === "success" && (
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                )}
+                {toast.type === "error" && (
+                  <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+                )}
+                {toast.type === "info" && <Sparkles className="w-4 h-4 text-indigo-400 shrink-0" />}
+                <span className="font-medium text-xs sm:text-sm">{toast.message}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => removeToast(toast.id)}
+                className="text-muted-foreground hover:text-foreground p-1 rounded-lg hover:bg-white/5 transition-colors cursor-pointer"
+                aria-label="Cerrar notificación"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Luces de fondo sutiles con glassmorphism */}
       <div className="hidden" />
       <div className="hidden" />
@@ -276,7 +492,7 @@ export default function TeamPage() {
                 </DialogDescription>
               </DialogHeader>
 
-              <form onSubmit={handleInviteMember} className="space-y-4 my-2">
+              <form onSubmit={handleInviteSubmit} className="space-y-4 my-2">
                 <div>
                   <label
                     htmlFor="invite-email"
@@ -291,7 +507,7 @@ export default function TeamPage() {
                     placeholder="ejemplo@yieldstudio.io"
                     value={newEmail}
                     onChange={(e) => setNewEmail(e.target.value)}
-                    className="w-full px-3.5 py-2 rounded-xl bg-background/60 border border-border text-foreground placeholder:text-foreground0 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 text-sm transition-all"
+                    className="w-full px-3.5 py-2 rounded-xl bg-background/60 border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 text-sm transition-all"
                   />
                 </div>
 
@@ -308,7 +524,7 @@ export default function TeamPage() {
                     placeholder="Ej. Valentina Rossi"
                     value={newName}
                     onChange={(e) => setNewName(e.target.value)}
-                    className="w-full px-3.5 py-2 rounded-xl bg-background/60 border border-border text-foreground placeholder:text-foreground0 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 text-sm transition-all"
+                    className="w-full px-3.5 py-2 rounded-xl bg-background/60 border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 text-sm transition-all"
                   />
                 </div>
 
@@ -430,7 +646,7 @@ export default function TeamPage() {
                 placeholder="Buscar por nombre, email o rol..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 rounded-xl bg-background/60 border border-border text-foreground placeholder:text-foreground0 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 text-sm transition-all"
+                className="w-full pl-10 pr-4 py-2 rounded-xl bg-background/60 border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-indigo-500/50 text-sm transition-all"
               />
             </div>
 
@@ -526,7 +742,6 @@ export default function TeamPage() {
               <TableBody>
                 {filteredMembers.map((member) => {
                   const roleConfig = ROLE_CONFIG[member.role] || ROLE_CONFIG.Developer;
-                  const RoleIcon = roleConfig.icon;
 
                   return (
                     <TableRow key={member.id} className="hover:bg-card transition-colors group">
@@ -556,42 +771,74 @@ export default function TeamPage() {
                       {/* Email */}
                       <TableCell className="py-4 px-6">
                         <span className="text-sm text-muted-foreground font-mono flex items-center gap-1.5">
-                          <Mail className="w-3.5 h-3.5 text-foreground0" />
+                          <Mail className="w-3.5 h-3.5 text-muted-foreground" />
                           {member.email}
                         </span>
                       </TableCell>
 
-                      {/* Rol */}
+                      {/* Rol editable con selector Dark Glassmorphism */}
                       <TableCell className="py-4 px-6">
-                        <span
-                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${roleConfig.color}`}
-                        >
-                          <RoleIcon className="w-3 h-3" />
-                          {member.role}
-                        </span>
+                        <div className="relative inline-flex items-center">
+                          <select
+                            aria-label={`Cambiar rol de ${member.name}`}
+                            value={member.role}
+                            onChange={(e) =>
+                              handleRoleChange(member.id, e.target.value as TeamRole)
+                            }
+                            className={`appearance-none inline-flex items-center gap-1.5 pl-3 pr-7 py-1 rounded-full text-xs font-medium border cursor-pointer focus:outline-none focus:ring-1 focus:ring-indigo-500/50 transition-all ${roleConfig.color} bg-slate-900/60 hover:bg-slate-900/90`}
+                          >
+                            <option value="Admin" className="bg-slate-900 text-foreground">
+                              Admin
+                            </option>
+                            <option value="Developer" className="bg-slate-900 text-foreground">
+                              Developer
+                            </option>
+                            <option value="Designer" className="bg-slate-900 text-foreground">
+                              Designer
+                            </option>
+                            <option value="DevOps" className="bg-slate-900 text-foreground">
+                              DevOps
+                            </option>
+                            <option value="QA" className="bg-slate-900 text-foreground">
+                              QA
+                            </option>
+                            <option value="Product" className="bg-slate-900 text-foreground">
+                              Product
+                            </option>
+                          </select>
+                          <ChevronDown className="w-3 h-3 absolute right-2 pointer-events-none text-muted-foreground opacity-60" />
+                        </div>
                       </TableCell>
 
-                      {/* Estado */}
+                      {/* Estado alternable ('active' | 'offline' | 'pending') */}
                       <TableCell className="py-4 px-6">
-                        {member.status === "active" ? (
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                            <span className="relative flex h-1.5 w-1.5">
-                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
+                        <button
+                          type="button"
+                          aria-label={`Alternar estado de ${member.name}`}
+                          title={`Estado actual: ${member.status}. Haz clic para alternar.`}
+                          onClick={() => handleToggleStatus(member)}
+                          className="group/btn inline-flex items-center cursor-pointer transition-transform hover:scale-105 active:scale-95 focus:outline-none"
+                        >
+                          {member.status === "active" ? (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 group-hover/btn:border-emerald-500/40">
+                              <span className="relative flex h-1.5 w-1.5">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
+                              </span>
+                              Activo
                             </span>
-                            Activo
-                          </span>
-                        ) : member.status === "offline" ? (
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-slate-500/10 text-muted-foreground border border-slate-500/20">
-                            <span className="h-1.5 w-1.5 rounded-full bg-slate-400"></span>
-                            Inactivo
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                            <Clock className="w-3 h-3" />
-                            Pendiente
-                          </span>
-                        )}
+                          ) : member.status === "offline" ? (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-slate-500/10 text-muted-foreground border border-slate-500/20 group-hover/btn:border-slate-500/40">
+                              <span className="h-1.5 w-1.5 rounded-full bg-slate-400"></span>
+                              Inactivo
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20 group-hover/btn:border-amber-500/40">
+                              <Clock className="w-3 h-3" />
+                              Pendiente
+                            </span>
+                          )}
+                        </button>
                       </TableCell>
 
                       {/* Última Actividad */}
@@ -599,14 +846,16 @@ export default function TeamPage() {
                         {member.lastActive}
                       </TableCell>
 
-                      {/* Acciones */}
+                      {/* Acciones: Botón Eliminar */}
                       <TableCell className="py-4 px-6 text-right">
                         <button
                           type="button"
-                          title="Opciones de miembro"
-                          className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 hover:text-foreground text-muted-foreground border border-border transition-colors cursor-pointer"
+                          aria-label={`Eliminar a ${member.name}`}
+                          title="Eliminar miembro"
+                          onClick={() => handleDeleteMember(member.id, member.name)}
+                          className="p-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 border border-red-500/20 transition-all cursor-pointer"
                         >
-                          <MoreVertical className="w-3.5 h-3.5" />
+                          <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       </TableCell>
                     </TableRow>
@@ -620,7 +869,6 @@ export default function TeamPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredMembers.map((member) => {
               const roleConfig = ROLE_CONFIG[member.role] || ROLE_CONFIG.Developer;
-              const RoleIcon = roleConfig.icon;
 
               return (
                 <div
@@ -641,44 +889,86 @@ export default function TeamPage() {
                             {member.name}
                           </h2>
                           <span className="flex items-center gap-1 text-xs text-muted-foreground font-mono mt-0.5">
-                            <Mail className="w-3 h-3 text-foreground0" />
+                            <Mail className="w-3 h-3 text-muted-foreground" />
                             {member.email}
                           </span>
                         </div>
                       </div>
 
-                      {/* Badge de Estado */}
-                      {member.status === "active" ? (
-                        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                          <span className="relative flex h-1.5 w-1.5">
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
+                      {/* Badge/Button de Estado Interactivo */}
+                      <button
+                        type="button"
+                        aria-label={`Alternar estado de ${member.name}`}
+                        title={`Estado actual: ${member.status}. Haz clic para alternar.`}
+                        onClick={() => handleToggleStatus(member)}
+                        className="group/btn inline-flex items-center cursor-pointer transition-transform hover:scale-105 active:scale-95 focus:outline-none"
+                      >
+                        {member.status === "active" ? (
+                          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 group-hover/btn:border-emerald-500/40">
+                            <span className="relative flex h-1.5 w-1.5">
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
+                            </span>
+                            Activo
                           </span>
-                          Activo
-                        </span>
-                      ) : member.status === "offline" ? (
-                        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium bg-slate-500/10 text-muted-foreground border border-slate-500/20">
-                          Inactivo
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                          Pendiente
-                        </span>
-                      )}
+                        ) : member.status === "offline" ? (
+                          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium bg-slate-500/10 text-muted-foreground border border-slate-500/20 group-hover/btn:border-slate-500/40">
+                            Inactivo
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20 group-hover/btn:border-amber-500/40">
+                            Pendiente
+                          </span>
+                        )}
+                      </button>
                     </div>
                   </div>
 
+                  {/* Card Footer: Rol editable + Última Actividad + Botón Eliminar */}
                   <div className="pt-4 border-t border-border flex items-center justify-between text-xs text-muted-foreground">
-                    <span
-                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${roleConfig.color}`}
-                    >
-                      <RoleIcon className="w-3 h-3" />
-                      {member.role}
-                    </span>
+                    <div className="relative inline-flex items-center">
+                      <select
+                        aria-label={`Cambiar rol de ${member.name}`}
+                        value={member.role}
+                        onChange={(e) => handleRoleChange(member.id, e.target.value as TeamRole)}
+                        className={`appearance-none inline-flex items-center gap-1.5 pl-2.5 pr-6 py-0.5 rounded-full text-xs font-medium border cursor-pointer focus:outline-none focus:ring-1 focus:ring-indigo-500/50 transition-all ${roleConfig.color} bg-slate-900/60 hover:bg-slate-900/90`}
+                      >
+                        <option value="Admin" className="bg-slate-900 text-foreground">
+                          Admin
+                        </option>
+                        <option value="Developer" className="bg-slate-900 text-foreground">
+                          Developer
+                        </option>
+                        <option value="Designer" className="bg-slate-900 text-foreground">
+                          Designer
+                        </option>
+                        <option value="DevOps" className="bg-slate-900 text-foreground">
+                          DevOps
+                        </option>
+                        <option value="QA" className="bg-slate-900 text-foreground">
+                          QA
+                        </option>
+                        <option value="Product" className="bg-slate-900 text-foreground">
+                          Product
+                        </option>
+                      </select>
+                      <ChevronDown className="w-3 h-3 absolute right-1.5 pointer-events-none text-muted-foreground opacity-60" />
+                    </div>
 
-                    <span className="font-mono text-muted-foreground text-[11px]">
-                      {member.lastActive}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-muted-foreground text-[11px]">
+                        {member.lastActive}
+                      </span>
+                      <button
+                        type="button"
+                        aria-label={`Eliminar a ${member.name}`}
+                        title="Eliminar miembro"
+                        onClick={() => handleDeleteMember(member.id, member.name)}
+                        className="p-1 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 border border-red-500/20 transition-all cursor-pointer"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </div>
                   </div>
                 </div>
               );

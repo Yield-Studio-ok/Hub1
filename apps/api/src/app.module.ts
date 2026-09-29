@@ -11,6 +11,7 @@ import { PlaneModule } from "./modules/plane/plane.module";
 import { TimerModule } from "./modules/timer/timer.module";
 import { InfraModule } from "./modules/infra/infra.module";
 import { NeonModule } from "./modules/neon/neon.module";
+import { TeamModule } from "./modules/team/team.module";
 import { HealthController } from "./health.controller";
 
 @Module({
@@ -31,6 +32,7 @@ import { HealthController } from "./health.controller";
     TimerModule,
     InfraModule,
     NeonModule,
+    TeamModule,
   ],
   controllers: [HealthController],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
