@@ -20,6 +20,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { ScraperQuickGuide } from "@/components/scraper-quick-guide";
 
 interface Lead {
   id: string;
@@ -83,16 +84,19 @@ export default function ScraperPage() {
 
   return (
     <div className="min-h-screen p-6 md:p-10 max-w-6xl mx-auto font-sans">
-      <div className="mb-8 flex items-center gap-3">
-        <div className="p-3 bg-primary/10 rounded-xl">
-          <Search className="h-7 w-7 text-primary" />
+      <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="p-3 bg-primary/10 rounded-xl">
+            <Search className="h-7 w-7 text-primary" />
+          </div>
+          <div>
+            <h1 className="text-3xl font-bold text-foreground tracking-tight">Buscador de Leads</h1>
+            <p className="text-muted-foreground mt-1">
+              Extrae prospectos directamente desde Google Maps.
+            </p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-3xl font-bold text-foreground tracking-tight">Buscador de Leads</h1>
-          <p className="text-muted-foreground mt-1">
-            Extrae prospectos directamente desde Google Maps.
-          </p>
-        </div>
+        <ScraperQuickGuide />
       </div>
 
       <form
