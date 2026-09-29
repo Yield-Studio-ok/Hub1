@@ -43,17 +43,15 @@ Cuando el usuario te pase un requerimiento, debes seguir este ciclo exacto apoy�
 
 ## 🔀 ENRUTAMIENTO DE MODELOS POR DIFICULTAD
 
-Al estimar la tarea en Linear, debes asignar estrictamente el modelo de IA correspondiente para optimizar costos y capacidad:
+Al estimar la tarea en Linear, debes asignar estrictamente el modelo de IA correspondiente para optimizar costos, velocidad y capacidad (basado en BenchLM.ai):
 
-- **Nivel 0 (Dificultad Extrema/Usuario/Investigación) ➔ `Usuario`**
-  _(Uso: Tareas demasiado complejas, integración de pasarelas de pago, etc)._
+- **Nivel 0 (Dificultad Extrema / Usuario / Decisión de Negocio) ➔ `Usuario`**
+  _(Uso: Tareas que requieren intervención humana directa, definición macro de arquitectura, gestión de pagos o aprovisionamiento de credenciales/secrets críticos)._
 - **Dificultad 1 a 3 ➔ `Gemini 3.1 Flash-Lite (Low)`**
-  _(Uso: Tareas triviales, formateo de código, soluciones de linter, tipado estático)._
-- **Dificultad 3 a 5 ➔ `Gemini 3.5 Flash (Medium)`**
-  _(Uso: Lógica simple a media, creación de componentes UI básicos, endpoints CRUD)._
-- **Dificultad 5 a 8 ➔ `Gemini 3.6 Flash (Medium)`**
-  _(Uso: Lógica de negocio avanzada, integraciones, refactors. Modelo principal)._
-- **Dificultad 8 a 10 ➔ `Gemini 3.1 Pro (High)`**
-  _(Uso: Debugging severo de fallos críticos, arquitectura compleja, orquestación)._
+  _(Uso: Tareas triviales o mecánicas, formateo de código, soluciones de linter, tipado estático simple, refactors cosméticos; máximo ahorro de tokens)._
+- **Dificultad 4 a 7 ➔ `Gemini 3.8 Flash (Medium)`**
+  _(Uso: Caballo de batalla principal para el 80% del desarrollo diario. Lógica de negocio, integración de APIs externas, componentes interactivos UI, endpoints CRUD y tests unitarios directos)._
+- **Dificultad 8 a 10 ➔ `Gemini 3.8 Flash (High)`**
+  _(Uso: **Modelo Workhorse de Élite** con pensamiento extendido —supera a 3.1 Pro según BenchLM.ai—. Especializado en SWE complejo, flujos agenticos autónomos multi-paso, debugging severo de fallos críticos, refactors cross-file masivos y orquestación profunda)._
 
 **INSTRUCCIÓN DE INICIO:** Si estás leyendo esto por orden del usuario, confirma que has entendido tus directivas, lee el `AGENT.md` y queda a la espera del requerimiento.

@@ -23,6 +23,7 @@ describe("MetricsService", () => {
 
     service = module.get<MetricsService>(MetricsService);
     prisma = module.get<PrismaService>(PrismaService);
+    jest.clearAllMocks();
   });
 
   it("should be defined", () => {
@@ -32,6 +33,7 @@ describe("MetricsService", () => {
   describe("getDashboardMetrics", () => {
     it("should return correct payload format", async () => {
       // Mock prisma count
+      jest.spyOn(prisma.user, "count").mockResolvedValue(0);
       // For total users
       jest.spyOn(prisma.user, "count").mockResolvedValueOnce(100);
       // For new users in last 7 days
@@ -39,11 +41,12 @@ describe("MetricsService", () => {
 
       const result = await service.getDashboardMetrics();
 
-      expect(prisma.user.count).toHaveBeenCalledTimes(2);
-      expect(result).toEqual({
+      expect(prisma.user.count).toHaveBeenCalledTimes(9);
+      expect(result).toMatchObject({
         totalUsers: 100,
         newUsersLast7Days: 15,
       });
+      expect(result.usersPerDay).toHaveLength(7);
     });
   });
 });

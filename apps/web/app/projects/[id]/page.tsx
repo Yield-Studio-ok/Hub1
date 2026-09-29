@@ -26,10 +26,13 @@ import {
   Copy,
   RefreshCw,
   AlertCircle,
+  Upload,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { EnvDropzoneModal } from "@/components/env-dropzone-modal";
+import { ParsedEnvVar } from "@/lib/env-parser";
 
 // FAKE DATA FOR MOCKUP
 const PROJECT = {
@@ -108,6 +111,8 @@ export default function ProjectDetailsPage({ params: _params }: { params: { id: 
   const [infraTab, setInfraTab] = useState("logs");
   const [showEnvs, setShowEnvs] = useState<Record<string, boolean>>({});
   const [neonConsumption, setNeonConsumption] = useState<any>(null);
+  const [envVars, setEnvVars] = useState(MOCK_ENV);
+  const [isEnvModalOpen, setIsEnvModalOpen] = useState(false);
 
   useEffect(() => {
     async function fetchConsumption() {
@@ -126,6 +131,32 @@ export default function ProjectDetailsPage({ params: _params }: { params: { id: 
 
   const toggleEnv = (key: string) => {
     setShowEnvs((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const handleApplyEnv = (parsedVariables: ParsedEnvVar[], mode: "merge" | "overwrite") => {
+    if (mode === "overwrite") {
+      setEnvVars(parsedVariables.map((v) => ({ ...v, env: v.env || "Producción" })));
+    } else {
+      setEnvVars((prev) => {
+        const map = new Map<string, { key: string; value: string; env: string }>();
+        for (const item of prev) {
+          map.set(item.key, item);
+        }
+        for (const item of parsedVariables) {
+          const existing = map.get(item.key);
+          map.set(item.key, {
+            key: item.key,
+            value: item.value,
+            env: item.env || existing?.env || "Producción",
+          });
+        }
+        return Array.from(map.values());
+      });
+    }
+  };
+
+  const handleDeleteEnv = (key: string) => {
+    setEnvVars((prev) => prev.filter((item) => item.key !== key));
   };
 
   return (
@@ -537,58 +568,83 @@ export default function ProjectDetailsPage({ params: _params }: { params: { id: 
                         Configura las credenciales y secretos del proyecto.
                       </p>
                     </div>
-                    <Button size="sm" className="gap-2">
-                      <Plus className="w-4 h-4" /> Agregar Variable
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="gap-2"
+                        onClick={() => setIsEnvModalOpen(true)}
+                      >
+                        <Upload className="w-4 h-4" /> Importar .env
+                      </Button>
+                      <Button size="sm" className="gap-2">
+                        <Plus className="w-4 h-4" /> Agregar Variable
+                      </Button>
+                    </div>
                   </div>
 
                   <Card className="border border-border overflow-hidden">
                     <div className="divide-y divide-border">
-                      {MOCK_ENV.map((env, i) => (
-                        <div key={i} className="p-4 hover:bg-muted/30 transition-colors">
-                          <div className="flex items-start justify-between gap-4">
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 mb-1">
-                                <span className="font-mono text-sm font-semibold text-foreground">
-                                  {env.key}
-                                </span>
-                                <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
-                                  {env.env}
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-2 mt-2">
-                                <code className="text-xs bg-muted/50 p-1.5 rounded text-muted-foreground flex-1 truncate font-mono border border-border/50">
-                                  {showEnvs[env.key]
-                                    ? env.value
-                                    : "••••••••••••••••••••••••••••••••"}
-                                </code>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8 shrink-0"
-                                  onClick={() => toggleEnv(env.key)}
-                                >
-                                  {showEnvs[env.key] ? (
-                                    <EyeOff className="w-4 h-4" />
-                                  ) : (
-                                    <Eye className="w-4 h-4" />
-                                  )}
-                                </Button>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
-                                  <Copy className="w-4 h-4" />
-                                </Button>
-                              </div>
-                            </div>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-destructive hover:bg-destructive/10 shrink-0"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </div>
+                      {envVars.length === 0 ? (
+                        <div className="p-8 text-center text-muted-foreground text-sm">
+                          No hay variables de entorno configuradas.
                         </div>
-                      ))}
+                      ) : (
+                        envVars.map((env, i) => (
+                          <div
+                            key={env.key || i}
+                            className="p-4 hover:bg-muted/30 transition-colors"
+                          >
+                            <div className="flex items-start justify-between gap-4">
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <span className="font-mono text-sm font-semibold text-foreground">
+                                    {env.key}
+                                  </span>
+                                  <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+                                    {env.env}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-2 mt-2">
+                                  <code className="text-xs bg-muted/50 p-1.5 rounded text-muted-foreground flex-1 truncate font-mono border border-border/50">
+                                    {showEnvs[env.key]
+                                      ? env.value
+                                      : "••••••••••••••••••••••••••••••••"}
+                                  </code>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 shrink-0"
+                                    onClick={() => toggleEnv(env.key)}
+                                  >
+                                    {showEnvs[env.key] ? (
+                                      <EyeOff className="w-4 h-4" />
+                                    ) : (
+                                      <Eye className="w-4 h-4" />
+                                    )}
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 shrink-0"
+                                    onClick={() => navigator.clipboard?.writeText(env.value)}
+                                  >
+                                    <Copy className="w-4 h-4" />
+                                  </Button>
+                                </div>
+                              </div>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-destructive hover:bg-destructive/10 shrink-0"
+                                onClick={() => handleDeleteEnv(env.key)}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        ))
+                      )}
                     </div>
                   </Card>
 
@@ -684,6 +740,13 @@ export default function ProjectDetailsPage({ params: _params }: { params: { id: 
           </div>
         </TabsContent>
       </Tabs>
+
+      <EnvDropzoneModal
+        open={isEnvModalOpen}
+        onOpenChange={setIsEnvModalOpen}
+        existingVars={envVars}
+        onApply={handleApplyEnv}
+      />
     </div>
   );
 }
