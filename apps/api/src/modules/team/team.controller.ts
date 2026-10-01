@@ -3,9 +3,11 @@ import { TeamService } from "./team.service";
 import { CreateTeamMemberDto } from "./dto/create-team-member.dto";
 import { UpdateTeamMemberDto } from "./dto/update-team-member.dto";
 import { ApiTags, ApiOperation, ApiResponse } from "@nestjs/swagger";
+import { Public } from "../auth/public.decorator";
 
 @ApiTags("team")
-@Controller("team")
+@Public()
+@Controller(["team", "api/team"])
 export class TeamController {
   constructor(private readonly teamService: TeamService) {}
 

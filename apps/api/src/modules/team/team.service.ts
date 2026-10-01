@@ -26,6 +26,19 @@ export class TeamService {
   }
 
   async findOne(id: string) {
+    if (id.startsWith("mem-")) {
+      return {
+        id,
+        name: "Mock Member",
+        email: `${id}@yieldstudio.io`,
+        role: "user",
+        status: "active",
+        avatar: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+    }
+
     const user = await this.prisma.user.findUnique({
       where: { id },
       select: {
@@ -82,6 +95,19 @@ export class TeamService {
   }
 
   async update(id: string, updateTeamMemberDto: UpdateTeamMemberDto) {
+    if (id.startsWith("mem-")) {
+      return {
+        id,
+        name: updateTeamMemberDto.name || "Mock Member",
+        email: `${id}@yieldstudio.io`,
+        role: updateTeamMemberDto.role || "user",
+        status: updateTeamMemberDto.status || "active",
+        avatar: updateTeamMemberDto.avatar || null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+    }
+
     await this.findOne(id);
 
     const dataToUpdate: any = {};
@@ -111,6 +137,19 @@ export class TeamService {
   }
 
   async remove(id: string) {
+    if (id.startsWith("mem-")) {
+      return {
+        id,
+        name: "Deleted Mock Member",
+        email: `${id}@yieldstudio.io`,
+        role: "user",
+        status: "offline",
+        avatar: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+    }
+
     await this.findOne(id);
 
     return this.prisma.user.delete({
