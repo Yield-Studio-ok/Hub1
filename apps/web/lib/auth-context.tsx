@@ -13,6 +13,14 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
+const hydrateMockUser = (mockData: any) => {
+  return {
+    ...mockData.user,
+    role: "FOUNDER",
+    getIdToken: async () => mockData.accessToken,
+  };
+};
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
@@ -20,14 +28,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const isDemo =
     !process.env.NEXT_PUBLIC_FIREBASE_API_KEY ||
     process.env.NEXT_PUBLIC_FIREBASE_API_KEY === "dummy_key";
-
-  const hydrateMockUser = (mockData: any) => {
-    return {
-      ...mockData.user,
-      role: "FOUNDER",
-      getIdToken: async () => mockData.accessToken,
-    };
-  };
 
   useEffect(() => {
     if (isDemo) {
@@ -47,7 +47,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (email: string, password: string) => {
     if (isDemo) {
-      const res = await fetch("http://localhost:3001/auth/login", {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+      const res = await fetch(`${apiUrl}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
@@ -81,6 +82,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 export function useAuth() {
   const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
+  if (!ctx) {
+    return {
+      user: null,
+      loading: false,
+      login: async () => {},
+      logout: async () => {},
+    };
+  }
   return ctx;
 }

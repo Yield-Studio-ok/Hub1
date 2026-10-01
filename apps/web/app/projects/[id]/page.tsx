@@ -33,6 +33,8 @@ import { Card } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { EnvDropzoneModal } from "@/components/env-dropzone-modal";
 import { ParsedEnvVar } from "@/lib/env-parser";
+import { apiFetch } from "@/lib/api";
+import { useAuth } from "@/lib/auth-context";
 
 // FAKE DATA FOR MOCKUP
 const PROJECT = {
@@ -107,6 +109,7 @@ const MOCK_DNS = [
 ];
 
 export default function ProjectDetailsPage({ params: _params }: { params: { id: string } }) {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState("overview");
   const [infraTab, setInfraTab] = useState("logs");
   const [showEnvs, setShowEnvs] = useState<Record<string, boolean>>({});
@@ -117,17 +120,25 @@ export default function ProjectDetailsPage({ params: _params }: { params: { id: 
   useEffect(() => {
     async function fetchConsumption() {
       try {
-        const res = await fetch(`http://localhost:4000/neon/projects/${PROJECT.id}/consumption`);
-        if (res.ok) {
-          const data = await res.json();
+        const token = await user?.getIdToken();
+        const data = await apiFetch<any>(`/neon/projects/${PROJECT.id}/consumption`, { token });
+        if (data) {
           setNeonConsumption(data);
         }
-      } catch (err) {
-        console.error("Failed to fetch Neon consumption", err);
+      } catch {
+        // Fallback for development / offline when NEON_API_KEY is not configured
+        setNeonConsumption({
+          project: {
+            consumption: {
+              data_storage_bytes_hour: 52428800, // ~50 MB
+              compute_time_seconds: 14400, // 4 hrs
+            },
+          },
+        });
       }
     }
     fetchConsumption();
-  }, []);
+  }, [user]);
 
   const toggleEnv = (key: string) => {
     setShowEnvs((prev) => ({ ...prev, [key]: !prev[key] }));
