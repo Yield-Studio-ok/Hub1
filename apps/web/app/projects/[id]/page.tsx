@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -28,13 +28,33 @@ import {
   AlertCircle,
   Upload,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { EnvDropzoneModal } from "@/components/env-dropzone-modal";
 import { ParsedEnvVar } from "@/lib/env-parser";
 import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogTrigger,
+  DialogClose,
+} from "@/components/ui/dialog";
+import {
+  fetchPlaneStatus,
+  fetchProjectIssues,
+  createProjectIssue,
+  type PlaneIssue,
+  type PlaneStatus,
+} from "@/lib/api/plane";
 
 // FAKE DATA FOR MOCKUP
 const PROJECT = {
@@ -55,10 +75,31 @@ const TEAM = [
   { id: 2, name: "Admin Yield", role: "Manager", initials: "AY" },
 ];
 
-const TICKETS = [
-  { id: "YLD-42", title: "Refactor Dashboard UI", status: "In Progress", priority: "High" },
-  { id: "YLD-41", title: "Setup Neon DB Connection", status: "Todo", priority: "Medium" },
-  { id: "YLD-40", title: "Fix Floating Timer", status: "Done", priority: "Low" },
+const PLANE_PROJECT_ID = "417c3e00-7395-4c5f-924b-ef9f4a0824ce";
+const PLANE_WORKSPACE_SLUG = "yield-studio-ok";
+
+const INITIAL_FALLBACK_TICKETS: PlaneIssue[] = [
+  {
+    id: "mock-1",
+    name: "Refactor Dashboard UI",
+    sequence_id: 42,
+    priority: "high",
+    state_detail: { name: "In Progress", group: "started" },
+  },
+  {
+    id: "mock-2",
+    name: "Setup Neon DB Connection",
+    sequence_id: 41,
+    priority: "medium",
+    state_detail: { name: "Todo", group: "unstarted" },
+  },
+  {
+    id: "mock-3",
+    name: "Fix Floating Timer",
+    sequence_id: 40,
+    priority: "low",
+    state_detail: { name: "Done", group: "completed" },
+  },
 ];
 
 const ACTIVITY = [
@@ -116,6 +157,66 @@ export default function ProjectDetailsPage({ params: _params }: { params: { id: 
   const [neonConsumption, setNeonConsumption] = useState<any>(null);
   const [envVars, setEnvVars] = useState(MOCK_ENV);
   const [isEnvModalOpen, setIsEnvModalOpen] = useState(false);
+  const [planeTickets, setPlaneTickets] = useState<PlaneIssue[]>(INITIAL_FALLBACK_TICKETS);
+  const [loadingPlaneTickets, setLoadingPlaneTickets] = useState(false);
+  const [planeStatus, setPlaneStatus] = useState<PlaneStatus | null>(null);
+  const [isNewTicketOpen, setIsNewTicketOpen] = useState(false);
+  const [newTicketTitle, setNewTicketTitle] = useState("");
+  const [newTicketPriority, setNewTicketPriority] = useState("medium");
+  const [newTicketDescription, setNewTicketDescription] = useState("");
+  const [isSubmittingTicket, setIsSubmittingTicket] = useState(false);
+
+  const loadPlaneTickets = useCallback(async () => {
+    setLoadingPlaneTickets(true);
+    try {
+      const token = await user?.getIdToken();
+      const [status, issues] = await Promise.all([
+        fetchPlaneStatus(token).catch(() => null),
+        fetchProjectIssues(PLANE_PROJECT_ID, token).catch(() => []),
+      ]);
+      if (status) setPlaneStatus(status);
+      if (issues && issues.length > 0) {
+        setPlaneTickets(issues);
+      }
+    } catch {
+      // Keep initial fallback if error occurs
+    } finally {
+      setLoadingPlaneTickets(false);
+    }
+  }, [user?.email]);
+
+  useEffect(() => {
+    loadPlaneTickets();
+  }, [loadPlaneTickets]);
+
+  const handleCreateTicket = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newTicketTitle.trim()) return;
+    setIsSubmittingTicket(true);
+    try {
+      const token = await user?.getIdToken();
+      const created = await createProjectIssue(
+        PLANE_PROJECT_ID,
+        {
+          name: newTicketTitle.trim(),
+          priority: newTicketPriority,
+          description: newTicketDescription.trim(),
+        },
+        token,
+      );
+      if (created) {
+        setPlaneTickets((prev) => [created, ...prev]);
+        setIsNewTicketOpen(false);
+        setNewTicketTitle("");
+        setNewTicketDescription("");
+        setNewTicketPriority("medium");
+      }
+    } catch (err) {
+      console.error("Error creating ticket in Plane", err);
+    } finally {
+      setIsSubmittingTicket(false);
+    }
+  };
 
   useEffect(() => {
     async function fetchConsumption() {
@@ -410,60 +511,189 @@ export default function ProjectDetailsPage({ params: _params }: { params: { id: 
 
         <TabsContent value="tasks">
           <Card className="p-0 bg-card border border-border shadow-sm overflow-hidden">
-            <div className="p-5 border-b border-border flex items-center justify-between bg-muted/30">
+            <div className="p-5 border-b border-border flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-muted/30">
               <div>
-                <h3 className="font-semibold text-foreground flex items-center gap-2">
-                  Integración con Plane
-                </h3>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-semibold text-foreground">Integración con Plane</h3>
+                  <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                    Sincronizado ({planeStatus?.workspaceSlug || PLANE_WORKSPACE_SLUG})
+                  </span>
+                </div>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Tickets y tareas activas para este proyecto.
+                  Tickets y tareas activas para este proyecto en Plane.
                 </p>
               </div>
-              <Button size="sm" className="gap-2">
-                <Plus className="w-4 h-4" /> Nuevo Ticket
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => loadPlaneTickets()}
+                  disabled={loadingPlaneTickets}
+                  className="gap-2"
+                  title="Actualizar tickets desde Plane"
+                >
+                  <RefreshCw className={`w-4 h-4 ${loadingPlaneTickets ? "animate-spin" : ""}`} />
+                  Actualizar
+                </Button>
+                <a
+                  href={`https://app.plane.so/${PLANE_WORKSPACE_SLUG}/projects/${PLANE_PROJECT_ID}/issues/`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className={cn(
+                    buttonVariants({ variant: "ghost", size: "sm" }),
+                    "gap-1.5 text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  Abrir Plane <ExternalLink className="w-3.5 h-3.5" />
+                </a>
+                <Dialog open={isNewTicketOpen} onOpenChange={setIsNewTicketOpen}>
+                  <DialogTrigger
+                    className={cn(buttonVariants({ size: "sm" }), "gap-2 cursor-pointer")}
+                  >
+                    <Plus className="w-4 h-4" /> Nuevo Ticket
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                      <DialogTitle>Nuevo Ticket en Plane</DialogTitle>
+                      <DialogDescription>
+                        Crea un ticket en el proyecto {PROJECT.name} directamente sincronizado con
+                        Plane.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <form onSubmit={handleCreateTicket} className="space-y-4 py-2">
+                      <div className="space-y-2">
+                        <Label htmlFor="ticket-title">Título del ticket</Label>
+                        <Input
+                          id="ticket-title"
+                          placeholder="Título de la tarea o issue..."
+                          value={newTicketTitle}
+                          onChange={(e) => setNewTicketTitle(e.target.value)}
+                          required
+                          disabled={isSubmittingTicket}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="ticket-priority">Prioridad</Label>
+                        <select
+                          id="ticket-priority"
+                          value={newTicketPriority}
+                          onChange={(e) => setNewTicketPriority(e.target.value)}
+                          className="w-full h-9 px-3 rounded-md border border-input bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                          disabled={isSubmittingTicket}
+                        >
+                          <option value="low">Baja (Low)</option>
+                          <option value="medium">Media (Medium)</option>
+                          <option value="high">Alta (High)</option>
+                          <option value="urgent">Urgente (Urgent)</option>
+                        </select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="ticket-description">Descripción (opcional)</Label>
+                        <textarea
+                          id="ticket-description"
+                          placeholder="Detalles sobre lo que se debe hacer..."
+                          value={newTicketDescription}
+                          onChange={(e) => setNewTicketDescription(e.target.value)}
+                          className="w-full h-20 p-2.5 rounded-md border border-input bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+                          disabled={isSubmittingTicket}
+                        />
+                      </div>
+                      <DialogFooter className="pt-2">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          onClick={() => setIsNewTicketOpen(false)}
+                          disabled={isSubmittingTicket}
+                        >
+                          Cancelar
+                        </Button>
+                        <Button type="submit" disabled={isSubmittingTicket}>
+                          {isSubmittingTicket ? "Creando..." : "Crear en Plane"}
+                        </Button>
+                      </DialogFooter>
+                    </form>
+                  </DialogContent>
+                </Dialog>
+              </div>
             </div>
             <div className="divide-y divide-border">
-              {TICKETS.map((ticket) => (
-                <div
-                  key={ticket.id}
-                  className="p-4 flex items-center justify-between hover:bg-muted/30 transition-colors"
-                >
-                  <div className="flex items-center gap-4">
-                    <span className="text-xs font-mono text-muted-foreground w-16">
-                      {ticket.id}
-                    </span>
-                    <span className="text-sm font-medium text-foreground">{ticket.title}</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span
-                      className={`text-xs px-2 py-1 rounded-md border ${
-                        ticket.status === "Done"
-                          ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
-                          : ticket.status === "In Progress"
-                            ? "bg-blue-500/10 text-blue-500 border-blue-500/20"
-                            : "bg-muted text-muted-foreground border-border"
-                      }`}
-                    >
-                      {ticket.status}
-                    </span>
-                    <span
-                      className={`text-xs px-2 py-1 rounded-md border ${
-                        ticket.priority === "High"
-                          ? "bg-red-500/10 text-red-500 border-red-500/20"
-                          : ticket.priority === "Medium"
-                            ? "bg-amber-500/10 text-amber-500 border-amber-500/20"
-                            : "bg-muted text-muted-foreground border-border"
-                      }`}
-                    >
-                      {ticket.priority}
-                    </span>
-                    <Button variant="ghost" size="icon" className="h-8 w-8">
-                      <MoreVertical className="w-4 h-4" />
-                    </Button>
-                  </div>
+              {loadingPlaneTickets && planeTickets.length === 0 ? (
+                <div className="p-8 text-center text-muted-foreground flex flex-col items-center justify-center gap-2">
+                  <RefreshCw className="w-5 h-5 animate-spin text-primary" />
+                  <p className="text-sm">Sincronizando con Plane...</p>
                 </div>
-              ))}
+              ) : planeTickets.length === 0 ? (
+                <div className="p-8 text-center text-muted-foreground">
+                  <p className="text-sm">No hay tickets registrados en este proyecto.</p>
+                </div>
+              ) : (
+                planeTickets.map((ticket) => {
+                  const statusName = ticket.state_detail?.name || (ticket as any).status || "Todo";
+                  const priority = ticket.priority || (ticket as any).priority || "medium";
+                  const isDone =
+                    statusName.toLowerCase() === "done" ||
+                    statusName.toLowerCase() === "completed" ||
+                    ticket.state_detail?.group === "completed";
+                  const isInProgress =
+                    statusName.toLowerCase() === "in progress" ||
+                    ticket.state_detail?.group === "started";
+
+                  return (
+                    <div
+                      key={ticket.id}
+                      className="p-4 flex items-center justify-between hover:bg-muted/30 transition-colors"
+                    >
+                      <div className="flex items-center gap-4">
+                        <span className="text-xs font-mono text-muted-foreground w-16">
+                          {ticket.sequence_id ? `YLD-${ticket.sequence_id}` : ticket.id}
+                        </span>
+                        <span className="text-sm font-medium text-foreground">
+                          {ticket.name || (ticket as any).title}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span
+                          className={`text-xs px-2 py-1 rounded-md border capitalize ${
+                            isDone
+                              ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
+                              : isInProgress
+                                ? "bg-blue-500/10 text-blue-500 border-blue-500/20"
+                                : "bg-muted text-muted-foreground border-border"
+                          }`}
+                        >
+                          {statusName}
+                        </span>
+                        <span
+                          className={`text-xs px-2 py-1 rounded-md border capitalize ${
+                            priority.toLowerCase() === "high" || priority.toLowerCase() === "urgent"
+                              ? "bg-red-500/10 text-red-500 border-red-500/20"
+                              : priority.toLowerCase() === "medium"
+                                ? "bg-amber-500/10 text-amber-500 border-amber-500/20"
+                                : "bg-muted text-muted-foreground border-border"
+                          }`}
+                        >
+                          {priority}
+                        </span>
+                        <a
+                          href={`https://app.plane.so/${PLANE_WORKSPACE_SLUG}/projects/${PLANE_PROJECT_ID}/issues/${ticket.id}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          title="Ver en Plane"
+                        >
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                          >
+                            <ExternalLink className="w-3.5 h-3.5" />
+                          </Button>
+                        </a>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
             </div>
           </Card>
         </TabsContent>

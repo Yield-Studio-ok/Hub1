@@ -10,6 +10,8 @@ import {
   Crosshair,
   Map as MapIcon,
   SlidersHorizontal,
+  Sparkles,
+  ExternalLink,
 } from "lucide-react";
 import {
   Dialog,
@@ -21,15 +23,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { ScraperQuickGuide } from "@/components/scraper-quick-guide";
-
-interface Lead {
-  id: string;
-  name: string;
-  address: string;
-  website: string | null;
-  mapsUrl: string;
-  rating?: number;
-}
+import { searchLeads, Lead } from "@/lib/scraper";
 
 export default function ScraperPage() {
   const [query, setQuery] = useState("");
@@ -48,39 +42,23 @@ export default function ScraperPage() {
     setLoading(true);
     setSearched(true);
 
-    // Mock API call — to be replaced with actual Puppeteer/Places API call
-    setTimeout(() => {
-      setResults([
-        {
-          id: "1",
-          name: "Pizzería Don Carlos",
-          address: locationName
-            ? `Av. Principal 123, ${locationName}`
-            : "Av. Corrientes 1234, CABA",
-          website: null,
-          mapsUrl: "https://maps.google.com/?q=Pizzeria+Don+Carlos",
-          rating: 4.5,
-        },
-        {
-          id: "2",
-          name: "La Farola de Cabildo",
-          address: "Av. Cabildo 2500, CABA",
-          website: "https://lafarola.com",
-          mapsUrl: "https://maps.google.com/?q=La+Farola",
-          rating: 4.0,
-        },
-        {
-          id: "3",
-          name: "Empanadas El Noble",
-          address: "Santa Fe 3200, CABA",
-          website: null,
-          mapsUrl: "https://maps.google.com/?q=El+Noble",
-          rating: 3.8,
-        },
-      ]);
+    try {
+      const data = await searchLeads({
+        query,
+        location: locationName,
+        radiusKm: radius,
+        onlyWithoutWebsite: onlySolidLeads,
+      });
+      setResults(data);
+    } catch (err) {
+      console.error("Error searching leads:", err);
+      setResults([]);
+    } finally {
       setLoading(false);
-    }, 2500);
+    }
   };
+
+  const displayedResults = onlySolidLeads ? results.filter((lead) => !lead.website) : results;
 
   return (
     <div className="min-h-screen p-6 md:p-10 max-w-6xl mx-auto font-sans">
@@ -166,14 +144,40 @@ export default function ScraperPage() {
                       src={`https://maps.google.com/maps?q=${locationName || "Buenos Aires"}&t=&z=${14 - Math.floor(radius / 10)}&ie=UTF8&iwloc=&output=embed`}
                     ></iframe>
 
-                    {/* Overlay target interactivo */}
-                    <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-                      <div className="relative flex items-center justify-center">
-                        <div
-                          className="absolute w-32 h-32 bg-primary/20 rounded-full animate-pulse border border-primary/50"
-                          style={{ transform: `scale(${radius / 5})` }}
-                        ></div>
-                        <Crosshair className="h-8 w-8 text-primary drop-shadow-md" />
+                    {/* Overlay target interactivo: Neon Radar HUD */}
+                    <div
+                      data-testid="radar-hud"
+                      className="absolute inset-0 pointer-events-none flex items-center justify-center overflow-hidden"
+                    >
+                      <div
+                        className="relative flex items-center justify-center transition-all duration-300 ease-out"
+                        style={{
+                          width: `${Math.min(290, Math.max(80, Math.round(75 + (radius / 50) * 215)))}px`,
+                          height: `${Math.min(290, Math.max(80, Math.round(75 + (radius / 50) * 215)))}px`,
+                        }}
+                      >
+                        {/* Ambient Neon Radar Glow & Wave */}
+                        <div className="absolute inset-0 rounded-full bg-emerald-500/15 border-2 border-emerald-400 shadow-[0_0_35px_rgba(52,211,153,0.5),inset_0_0_20px_rgba(52,211,153,0.25)] animate-pulse" />
+
+                        {/* Concentric inner range ring (50%) */}
+                        <div className="absolute w-1/2 h-1/2 rounded-full border border-dashed border-emerald-400/60" />
+
+                        {/* Crosshair Axes */}
+                        <div className="absolute w-full h-[1px] bg-emerald-400/40" />
+                        <div className="absolute h-full w-[1px] bg-emerald-400/40" />
+
+                        {/* Center Beacon & Crosshair */}
+                        <div className="relative z-10 flex items-center justify-center">
+                          <span className="absolute h-4 w-4 rounded-full bg-emerald-400 opacity-75 animate-ping" />
+                          <span className="h-2.5 w-2.5 rounded-full bg-emerald-300 shadow-[0_0_12px_#34d399]" />
+                          <Crosshair className="absolute h-8 w-8 text-emerald-300 drop-shadow-[0_2px_10px_rgba(0,0,0,0.9)]" />
+                        </div>
+
+                        {/* Dynamic Floating Distance Badge */}
+                        <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-2.5 py-0.5 bg-zinc-950/90 text-emerald-300 border border-emerald-400/80 rounded-full font-mono text-[11px] font-bold tracking-wider shadow-xl flex items-center gap-1.5 backdrop-blur-md whitespace-nowrap">
+                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                          {radius} km
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -252,11 +256,11 @@ export default function ScraperPage() {
         <div className="space-y-6">
           <div className="flex items-center justify-between">
             <h2 className="text-2xl font-bold text-foreground">
-              Resultados <span className="text-primary">({results.length})</span>
+              Resultados <span className="text-primary">({displayedResults.length})</span>
             </h2>
           </div>
 
-          {results.length === 0 && !loading ? (
+          {displayedResults.length === 0 && !loading ? (
             <div className="text-center py-16 bg-card border border-border rounded-2xl">
               <Search className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-50" />
               <h3 className="text-lg font-medium text-foreground">No se encontraron leads</h3>
@@ -266,44 +270,55 @@ export default function ScraperPage() {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {results.map((lead) => (
+              {displayedResults.map((lead) => (
                 <div
                   key={lead.id}
-                  className="bg-card rounded-2xl border border-border p-5 hover:border-primary/50 hover:shadow-md transition-all group"
+                  className="bg-card rounded-2xl border border-border p-5 hover:border-primary/50 hover:shadow-md transition-all group flex flex-col justify-between"
                 >
-                  <div className="flex justify-between items-start mb-4">
-                    <h3 className="font-bold text-lg text-foreground line-clamp-1 group-hover:text-primary transition-colors">
-                      {lead.name}
-                    </h3>
-                    {lead.rating && (
-                      <span className="bg-amber-500/10 text-amber-500 text-xs font-bold px-2 py-1 rounded-md border border-amber-500/20">
-                        ★ {lead.rating}
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="space-y-3 mb-6">
-                    <div className="flex items-start gap-2.5 text-sm text-muted-foreground">
-                      <MapPin className="h-4 w-4 shrink-0 mt-0.5" />
-                      <span className="line-clamp-2">{lead.address}</span>
+                  <div>
+                    <div className="flex justify-between items-start gap-2 mb-3">
+                      <h3 className="font-bold text-lg text-foreground line-clamp-1 group-hover:text-primary transition-colors">
+                        {lead.name}
+                      </h3>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {!lead.website && (
+                          <span className="bg-emerald-500/10 text-emerald-400 text-[11px] font-bold px-2 py-0.5 rounded-md border border-emerald-500/20 flex items-center gap-1">
+                            <Sparkles className="h-3 w-3" />
+                            Sólido
+                          </span>
+                        )}
+                        {lead.rating && (
+                          <span className="bg-amber-500/10 text-amber-500 text-xs font-bold px-2 py-0.5 rounded-md border border-amber-500/20">
+                            ★ {lead.rating}
+                          </span>
+                        )}
+                      </div>
                     </div>
 
-                    <div className="flex items-start gap-2.5 text-sm">
-                      <Globe className="h-4 w-4 shrink-0 mt-0.5 text-muted-foreground" />
-                      {lead.website ? (
-                        <a
-                          href={lead.website}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-400 hover:text-blue-300 hover:underline line-clamp-1"
-                        >
-                          {lead.website}
-                        </a>
-                      ) : (
-                        <span className="text-destructive font-medium bg-destructive/10 px-2 py-0.5 rounded border border-destructive/20">
-                          Sin sitio web
-                        </span>
-                      )}
+                    <div className="space-y-3 mb-6">
+                      <div className="flex items-start gap-2.5 text-sm text-muted-foreground">
+                        <MapPin className="h-4 w-4 shrink-0 mt-0.5" />
+                        <span className="line-clamp-2">{lead.address}</span>
+                      </div>
+
+                      <div className="flex items-start gap-2.5 text-sm">
+                        <Globe className="h-4 w-4 shrink-0 mt-0.5 text-muted-foreground" />
+                        {lead.website ? (
+                          <a
+                            href={lead.website}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-400 hover:text-blue-300 hover:underline line-clamp-1 flex items-center gap-1"
+                          >
+                            <span>{lead.website}</span>
+                            <ExternalLink className="h-3 w-3 shrink-0" />
+                          </a>
+                        ) : (
+                          <span className="text-destructive font-medium bg-destructive/10 px-2 py-0.5 rounded border border-destructive/20">
+                            Sin sitio web
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
 

@@ -11,6 +11,9 @@ describe("PlaneController", () => {
   const mockPlaneService = {
     getProjects: jest.fn(),
     getActiveTicketsForUser: jest.fn(),
+    getStatus: jest.fn(),
+    getProjectIssues: jest.fn(),
+    createProjectIssue: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -35,6 +38,10 @@ describe("PlaneController", () => {
 
     controller = module.get<PlaneController>(PlaneController);
     service = module.get<PlaneService>(PlaneService);
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
   });
 
   it("should be defined", () => {
@@ -70,6 +77,52 @@ describe("PlaneController", () => {
         data: mockTickets,
       });
       expect(service.getActiveTicketsForUser).toHaveBeenCalledWith("test@example.com");
+    });
+  });
+
+  describe("getStatus", () => {
+    it("should return the plane configuration status", () => {
+      const mockStatus = {
+        isConfigured: true,
+        workspaceSlug: "yield-studio-ok",
+        apiUrl: "https://api.plane.so",
+      };
+      mockPlaneService.getStatus.mockReturnValue(mockStatus);
+
+      const result = controller.getStatus();
+      expect(result).toEqual({ success: true, data: mockStatus });
+      expect(mockPlaneService.getStatus).toHaveBeenCalled();
+    });
+  });
+
+  describe("getProjectIssues", () => {
+    it("should return project issues", async () => {
+      const mockIssues = [{ id: "issue-1", name: "Issue 1" }];
+      mockPlaneService.getProjectIssues.mockResolvedValue(mockIssues);
+
+      const result = await controller.getProjectIssues("proj-1");
+      expect(result).toEqual({ success: true, data: mockIssues });
+      expect(mockPlaneService.getProjectIssues).toHaveBeenCalledWith("proj-1");
+    });
+  });
+
+  describe("createProjectIssue", () => {
+    it("should create a project issue", async () => {
+      const newIssue = { id: "issue-new", name: "New Issue" };
+      mockPlaneService.createProjectIssue.mockResolvedValue(newIssue);
+
+      const result = await controller.createProjectIssue("proj-1", {
+        name: "New Issue",
+        priority: "high",
+        description: "Test description",
+      });
+
+      expect(result).toEqual({ success: true, data: newIssue });
+      expect(mockPlaneService.createProjectIssue).toHaveBeenCalledWith("proj-1", {
+        name: "New Issue",
+        priority: "high",
+        description: "Test description",
+      });
     });
   });
 });

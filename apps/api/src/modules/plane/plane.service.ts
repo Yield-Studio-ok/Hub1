@@ -106,6 +106,84 @@ export class PlaneService {
     return allTickets;
   }
 
+  getStatus() {
+    return {
+      isConfigured: !!(this.apiKey && this.workspaceSlug),
+      workspaceSlug: this.workspaceSlug,
+      apiUrl: this.apiUrl,
+    };
+  }
+
+  async getProjectIssues(projectId: string): Promise<any[]> {
+    if (!this.apiKey) {
+      this.logger.warn("Plane API keys missing. Returning fallback project issues.");
+      return [
+        {
+          id: "mock-yld-1",
+          name: "Refactor Dashboard UI",
+          sequence_id: 42,
+          priority: "high",
+          state_detail: { name: "In Progress", group: "started" },
+        },
+        {
+          id: "mock-yld-2",
+          name: "Setup Neon DB Connection",
+          sequence_id: 41,
+          priority: "medium",
+          state_detail: { name: "Todo", group: "unstarted" },
+        },
+        {
+          id: "mock-yld-3",
+          name: "Fix Floating Timer",
+          sequence_id: 40,
+          priority: "low",
+          state_detail: { name: "Done", group: "completed" },
+        },
+      ];
+    }
+
+    try {
+      const data = await this.fetchPlaneAPI(`/projects/${projectId}/work-items/`);
+      return Array.isArray(data) ? data : data.results || [];
+    } catch (err: any) {
+      this.logger.warn(`Failed to fetch work-items for project ${projectId}: ${err.message}`);
+      try {
+        const fallbackData = await this.fetchPlaneAPI(`/projects/${projectId}/issues/`);
+        return Array.isArray(fallbackData) ? fallbackData : fallbackData.results || [];
+      } catch (innerErr: any) {
+        this.logger.error(
+          `Failed to fetch issues fallback for project ${projectId}: ${innerErr.message}`,
+        );
+        return [];
+      }
+    }
+  }
+
+  async createProjectIssue(
+    projectId: string,
+    issueData: { name: string; priority?: string; description?: string },
+  ): Promise<any> {
+    if (!this.apiKey) {
+      return {
+        id: `mock-${Date.now()}`,
+        name: issueData.name,
+        sequence_id: Math.floor(Math.random() * 100) + 50,
+        priority: issueData.priority || "medium",
+        state_detail: { name: "Todo", group: "unstarted" },
+        created_at: new Date().toISOString(),
+      };
+    }
+
+    return this.fetchPlaneAPI(`/projects/${projectId}/work-items/`, {
+      method: "POST",
+      body: JSON.stringify({
+        name: issueData.name,
+        priority: issueData.priority || "medium",
+        description_html: issueData.description ? `<p>${issueData.description}</p>` : undefined,
+      }),
+    });
+  }
+
   async addCommentToIssue(projectId: string, issueId: string, commentHtml: string): Promise<any> {
     if (!this.apiKey) return null;
     return this.fetchPlaneAPI(`/projects/${projectId}/issues/${issueId}/comments/`, {
@@ -114,4 +192,3 @@ export class PlaneService {
     });
   }
 }
-
